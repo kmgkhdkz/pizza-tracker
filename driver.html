@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>配達GPS送信</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 20px; background: #f4f4f4; }
+    h1 { font-size: 24px; }
+    select, button { font-size: 20px; padding: 15px 30px; margin: 10px; border-radius: 10px; }
+    .btn-start { background: #28a745; color: white; border: none; width: 80%; }
+    .btn-stop { background: #dc3545; color: white; border: none; width: 80%; }
+    #status { font-size: 18px; font-weight: bold; margin-top: 20px; color: #333; }
+  </style>
+
+  <!-- Firebase SDK -->
+  <script src="[suspicious link removed]"></script>
+  <script src="[suspicious link removed]"></script>
+</head>
+<body>
+
+  <h1>🍕 配達GPSTracker</h1>
+
+  <label for="bikeSelect">車両選択：</label><br>
+  <select id="bikeSelect">
+    <option value="driver_01">01号車</option>
+    <option value="driver_02">02号車</option>
+    <option value="driver_03">03号車</option>
+    <option value="driver_04">04号車</option>
+    <option value="driver_05">05号車</option>
+  </select>
+
+  <br><br>
+  <button id="startBtn" class="btn-start" onclick="startTracking()">▶ 配達開始</button>
+  <button id="stopBtn" class="btn-stop" onclick="stopTracking()" style="display:none;">■ 配達完了（帰店）</button>
+
+  <div id="status">待機中...</div>
+
+  <script>
+    // const firebaseConfig = {
+  apiKey: "AIzaSyBgf38trcys4SOhDhxfTk1d-tCryPvYaL8",
+  authDomain: "pizza-tracker-42bd1.firebaseapp.com",
+  databaseURL: "https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "pizza-tracker-42bd1",
+  storageBucket: "pizza-tracker-42bd1.firebasestorage.app",
+  messagingSenderId: "115595805951",
+  appId: "1:115595805951:web:ae5d7a5d171d7206ce38ca"
+};
+    /* 例:
+    const firebaseConfig = {
+      apiKey: "AIzaSy...",
+      databaseURL: "[suspicious link removed]",
+      // ...
+    };
+    */
+    
+    // Firebase初期化
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let watchId = null;
+
+    function startTracking() {
+      const bikeId = document.getElementById('bikeSelect').value;
+      if (!navigator.geolocation) {
+        alert("GPSがサポートされていません");
+        return;
+      }
+
+      document.getElementById('startBtn').style.display = "none";
+      document.getElementById('stopBtn').style.display = "inline-block";
+      document.getElementById('status').innerText = "📡 GPS送信中 (" + bikeId + ")";
+
+      // 位置情報をリアルタイム取得・送信
+      watchId = navigator.geolocation.watchPosition(position => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+
+        db.ref('drivers/' + bikeId).set({
+          lat: lat,
+          lng: lng,
+          updatedAt: [不審なリンクを削除しました](),
+          status: "active"
+        });
+      }, error => {
+        console.error(error);
+        document.getElementById('status').innerText = "エラー: GPS取得失敗";
+      }, {
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 5000
+      });
+    }
+
+    function stopTracking() {
+      if (watchId) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+      const bikeId = document.getElementById('bikeSelect').value;
+      db.ref('drivers/' + bikeId).update({ status: "inactive" });
+
+      document.getElementById('startBtn').style.display = "inline-block";
+      document.getElementById('stopBtn').style.display = "none";
+      document.getElementById('status').innerText = "停止しました（待機中）";
+    }
+  </script>
+</body>
+</html>
