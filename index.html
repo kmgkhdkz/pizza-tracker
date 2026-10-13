@@ -14,11 +14,10 @@
   <script src="[suspicious link removed]"></script>
 
   <style>
-    body { margin: 0; padding: 0; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; }
-    #header { background: #333; color: white; padding: 10px 20px; font-size: 18px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
-    #map { flex: 1; width: 100%; }
-    .alert-banner { background: #ff3333; color: white; padding: 10px; text-align: center; font-size: 20px; font-weight: bold; display: none; animation: blink 1s infinite; }
-    @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+    html, body { margin: 0; padding: 0; height: 100%; font-family: sans-serif; display: flex; flex-direction: column; }
+    #header { background: #333; color: white; padding: 12px 20px; font-size: 18px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+    #alertBanner { background: #ff3333; color: white; padding: 10px; text-align: center; font-size: 20px; font-weight: bold; display: none; }
+    #map { flex: 1; width: 100%; min-height: 400px; }
   </style>
 </head>
 <body>
@@ -27,34 +26,28 @@
     <span>🍕 配達状況リアルタイムモニター</span>
     <span id="activeCount">稼働中: 0台</span>
   </div>
-  <div id="alertBanner" class="alert-banner">⚠️ 車両が店舗500m圏内に接近中！</div>
+  <div id="alertBanner">⚠️ 車両が店舗500m圏内に接近中！</div>
   <div id="map"></div>
 
   <script>
-  const firebaseConfig = {
-  apiKey: "AIzaSyBgf38trcys4SOhDhxfTk1d-tCryPvYaL8",
-  authDomain: "pizza-tracker-42bd1.firebaseapp.com",
-  databaseURL: "https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "pizza-tracker-42bd1",
-  storageBucket: "pizza-tracker-42bd1.firebasestorage.app",
-  messagingSenderId: "115595805951",
-  appId: "1:115595805951:web:ae5d7a5d171d7206ce38ca"
-};
-    /* 例:
+    // Firebase設定値
     const firebaseConfig = {
-      apiKey: "AIzaSy...",
-      databaseURL: "https://...",
-      // ...
+      apiKey: "AIzaSyBgf38trcys4SOhDhxfTk1d-tCryPvYaL8",
+      authDomain: "pizza-tracker-42bd1.firebaseapp.com",
+      databaseURL: "https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "pizza-tracker-42bd1",
+      storageBucket: "[不審なリンクを削除しました]",
+      messagingSenderId: "115595805951",
+      appId: "1:115595805951:web:ae5d7a5d171d7206ce38ca"
     };
-    */
 
     // Firebase初期化
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // 店舗の基準位置（※ご自身の店舗の緯度・経度に書き換えてください）
-    const STORE_LAT = 34.3519265487035;// 例: 矢野駅前店の緯度
-    const STORE_LNG = 132.53266164179016;// 例: 矢野駅前店の経度
+    // 店舗の基準位置（矢野駅前店）
+    const STORE_LAT = 34.3519265487035;
+    const STORE_LNG = 132.53266164179016;
 
     // 地図の初期化（店舗中心、ズームレベル14）
     const map = [不審なリンクを削除しました]('map').setView([STORE_LAT, STORE_LNG], 14);
@@ -64,8 +57,8 @@
       attribution: '© OpenStreetMap'
     }).addTo(map);
 
-    // 店舗のマーカーと500mアラート圏（サークル）を表示
-    L.marker([STORE_LAT, STORE_LNG]).addTo(map).bindPopup("<b>店舗</b>").openPopup();
+    // 店舗のマーカーと500mアラート圏を表示
+    L.marker([STORE_LAT, STORE_LNG]).addTo(map).bindPopup("<b>店舗（矢野駅前店）</b>").openPopup();
     [不審なリンクを削除しました]([STORE_LAT, STORE_LNG], { radius: 500, color: 'red', fillColor: '#f03', fillOpacity: 0.1 }).addTo(map);
 
     // 各バイクのピン（マーカー）を保持するオブジェクト
