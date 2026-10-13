@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>店舗用 配達リアルタイムモニター</title>
+  
+  <!-- Leaflet (地図ライブラリ) CSS & JS -->
+  <link rel="stylesheet" href="[suspicious link removed]" />
+  <script src="[suspicious link removed]"></script>
+
+  <!-- Firebase SDK -->
+  <script src="[suspicious link removed]"></script>
+  <script src="[suspicious link removed]"></script>
+
+  <style>
+    body { margin: 0; padding: 0; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; }
+    #header { background: #333; color: white; padding: 10px 20px; font-size: 18px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+    #map { flex: 1; width: 100%; }
+    .alert-banner { background: #ff3333; color: white; padding: 10px; text-align: center; font-size: 20px; font-weight: bold; display: none; animation: blink 1s infinite; }
+    @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+  </style>
+</head>
+<body>
+
+  <div id="header">
+    <span>🍕 配達状況リアルタイムモニター</span>
+    <span id="activeCount">稼働中: 0台</span>
+  </div>
+  <div id="alertBanner" class="alert-banner">⚠️ 車両が店舗500m圏内に接近中！</div>
+  <div id="map"></div>
+
+  <script>
+    // const firebaseConfig = {
+  apiKey: "AIzaSyBgf38trcys4SOhDhxfTk1d-tCryPvYaL8",
+  authDomain: "pizza-tracker-42bd1.firebaseapp.com",
+  databaseURL: "https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "pizza-tracker-42bd1",
+  storageBucket: "pizza-tracker-42bd1.firebasestorage.app",
+  messagingSenderId: "115595805951",
+  appId: "1:115595805951:web:ae5d7a5d171d7206ce38ca"
+};
+    /* 例:
+    const firebaseConfig = {
+      apiKey: "AIzaSy...",
+      databaseURL: "https://...",
+      // ...
+    };
+    */
+
+    // Firebase初期化
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // 店舗の基準位置（※ご自身の店舗の緯度・経度に書き換えてください）
+    const STORE_LAT = 34.3519265487035,  // 例: 矢野駅前店の緯度
+    const STORE_LNG = 132.53266164179016; // 例: 矢野駅前店の経度
+
+    // 地図の初期化（店舗中心、ズームレベル14）
+    const map = [不審なリンクを削除しました]('map').setView([STORE_LAT, STORE_LNG], 14);
+
+    // 地図タイルの読み込み（OpenStreetMap）
+    L.tileLayer('https://{s}.[不審なリンクを削除しました]{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    // 店舗のマーカーと500mアラート圏（サークル）を表示
+    L.marker([STORE_LAT, STORE_LNG]).addTo(map).bindPopup("<b>店舗</b>").openPopup();
+    [不審なリンクを削除しました]([STORE_LAT, STORE_LNG], { radius: 500, color: 'red', fillColor: '#f03', fillOpacity: 0.1 }).addTo(map);
+
+    // 各バイクのピン（マーカー）を保持するオブジェクト
+    const bikeMarkers = {};
+
+    // 距離計算関数（2点間のメートル計算）
+    function getDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371e3;
+      const φ1 = lat1 * Math.PI/180, φ2 = lat2 * Math.PI/180;
+      const Δφ = (lat2-lat1) * Math.PI/180, Δλ = (lon2-lon1) * Math.PI/180;
+      const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    // Realtime Databaseの変更を監視
+    db.ref('drivers').on('value', snapshot => {
+      const drivers = snapshot.val();
+      if (!drivers) return;
+
+      let activeCount = 0;
+      let nearStoreAlert = false;
+
+      Object.keys(drivers).forEach(bikeId => {
+        const driver = drivers[bikeId];
+        
+        if (driver.status === 'active') {
+          activeCount++;
+          const dist = getDistance(STORE_LAT, STORE_LNG, [不審なリンクを削除しました], driver.lng);
+
+          // 500m圏内チェック
+          if (dist <= 500) nearStoreAlert = true;
+
+          // 既存ピンの移動、または新規作成
+          if (bikeMarkers[bikeId]) {
+            bikeMarkers[bikeId].setLatLng([[不審なリンクを削除しました], driver.lng]);
+          } else {
+            bikeMarkers[bikeId] = L.marker([[不審なリンクを削除しました], driver.lng]).addTo(map);
+          }
+          
+          // 車両名と店舗からの距離を吹き出し表示
+          const bikeLabel = bikeId.replace('driver_', '') + '号車';
+          bikeMarkers[bikeId].bindTooltip(`🛵 ${bikeLabel} (${Math.round(dist)}m)`, { permanent: true, direction: 'top' });
+        } else {
+          // 非アクティブ（配達完了）時はピンを消去
+          if (bikeMarkers[bikeId]) {
+            map.removeLayer(bikeMarkers[bikeId]);
+            delete bikeMarkers[bikeId];
+          }
+        }
+      });
+
+      document.getElementById('activeCount').innerText = `稼働中: ${activeCount}台`;
+      document.getElementById('alertBanner').style.display = nearStoreAlert ? 'block' : 'none';
+    });
+  </script>
+</body>
+</html>
