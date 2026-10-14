@@ -1,14 +1,43 @@
-```
-
-  
-  
-  
-  
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>動作テスト</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 20px; background: #f4f4f4; }
+    button { font-size: 20px; padding: 15px 30px; background: #28a745; color: white; border: none; border-radius: 10px; width: 80%; }
+    #status { font-size: 18px; font-weight: bold; margin-top: 20px; color: #333; line-height: 1.6; }
+  </style>
+</head>
+<body>
 
   <h1>🧪 動作テスト画面</h1>
-  
-  <div>待機中...</div>
+  <button onclick="testBtn()">▶ テスト開始</button>
+  <div id="status">待機中...</div>
 
-  
+  <script>
+    function testBtn() {
+      // 1. ボタンが反応したことを画面に表示
+      document.getElementById('status').innerText = "✅ ボタンが押されました！GPSを取得中...";
 
-```
+      // 2. スマホのGPS（位置情報）をテスト
+      if (!navigator.geolocation) {
+        document.getElementById('status').innerText = "❌ お使いのブラウザはGPS非対応です";
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        position => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          document.getElementById('status').innerText = "🎉 GPS取得成功！\n緯度: " + lat + "\n経度: " + lng;
+        },
+        error => {
+          document.getElementById('status').innerText = "❌ GPSエラー: " + error.message;
+        }
+      );
+    }
+  </script>
+</body>
+</html>
