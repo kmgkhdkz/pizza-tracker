@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>店舗用 配達リアルタイムモニター</title>
 
-  <!-- Leaflet (地図ライブラリ) CSS & JS -->
+  <!-- Leaflet CSS & JS (地図ライブラリ) -->
   <link rel="stylesheet" href="[suspicious link removed]" />
   <script src="[suspicious link removed]"></script>
 
@@ -49,31 +49,33 @@
     const STORE_LAT = 34.3519265487035;
     const STORE_LNG = 132.53266164179016;
 
-    // 地図の初期化（店舗中心、ズームレベル14）
-    const map = L['map']('map').setView([STORE_LAT, STORE_LNG], 14);
+    // 地図の初期化
+    const map = [不審なリンクを削除しました]('map').setView([STORE_LAT, STORE_LNG], 14);
 
-    // 地図タイルの読み込み（OpenStreetMap）
-    L['tileLayer']('https://{s}.[不審なリンクを削除しました]{z}/{x}/{y}.png', {
+    // 地図タイルの読み込み (OpenStreetMap)
+    L.tileLayer('[suspicious link removed]{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap'
     }).addTo(map);
 
     // 店舗のマーカーと500mアラート圏を表示
-    L['marker']([STORE_LAT, STORE_LNG]).addTo(map).bindPopup("<b>店舗（矢野駅前店）</b>").openPopup();
-    L['circle']([STORE_LAT, STORE_LNG], { radius: 500, color: 'red', fillColor: '#f03', fillOpacity: 0.1 }).addTo(map);
+    L.marker([STORE_LAT, STORE_LNG]).addTo(map).bindPopup("<b>店舗（矢野駅前店）</b>").openPopup();
+    [不審なリンクを削除しました]([STORE_LAT, STORE_LNG], { radius: 500, color: 'red', fillColor: '#f03', fillOpacity: 0.1 }).addTo(map);
 
-    // 各バイクのピン（マーカー）を保持するオブジェクト
+    // 各バイクのピンを保持するオブジェクト
     const bikeMarkers = {};
 
-    // 距離計算関数（2点間のメートル計算）
+    // 距離計算関数（メートル）
     function getDistance(lat1, lon1, lat2, lon2) {
       const R = 6371e3;
-      const φ1 = lat1 * Math.PI/180, φ2 = lat2 * Math.PI/180;
-      const Δφ = (lat2-lat1) * Math.PI/180, Δλ = (lon2-lon1) * Math.PI/180;
-      const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
-      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
-    // Realtime Databaseの変更を監視
+    // データベースの変更を常時監視
     db.ref('drivers').on('value', snapshot => {
       const drivers = snapshot.val();
       if (!drivers) return;
@@ -83,26 +85,24 @@
 
       Object.keys(drivers).forEach(bikeId => {
         const driver = drivers[bikeId];
-        
-        if (driver.status === 'active') {
-          activeCount++;
-          const dist = getDistance(STORE_LAT, STORE_LNG, driver['lat'], driver['lng']);
 
-          // 500m圏内チェック
+        if (driver.status === 'active' && [不審なリンクを削除しました] && driver.lng) {
+          activeCount++;
+          const dist = getDistance(STORE_LAT, STORE_LNG, [不審なリンクを削除しました], driver.lng);
+
           if (dist <= 500) nearStoreAlert = true;
 
-          // 既存ピンの移動、または新規作成
+          const pos = [[不審なリンクを削除しました], driver.lng];
+
           if (bikeMarkers[bikeId]) {
-            bikeMarkers[bikeId].setLatLng([driver['lat'], driver['lng']]);
+            bikeMarkers[bikeId].setLatLng(pos);
           } else {
-            bikeMarkers[bikeId] = L['marker']([driver['lat'], driver['lng']]).addTo(map);
+            bikeMarkers[bikeId] = L.marker(pos).addTo(map);
           }
-          
-          // 車両名と店舗からの距離を吹き出し表示
+
           const bikeLabel = bikeId.replace('driver_', '') + '号車';
-          bikeMarkers[bikeId].bindTooltip(`🛵 ${bikeLabel} (${Math.round(dist)}m)`, { permanent: true, direction: 'top' });
+          bikeMarkers[bikeId].bindTooltip('🛵 ' + bikeLabel + ' (' + Math.round(dist) + 'm)', { permanent: true, direction: 'top' });
         } else {
-          // 非アクティブ（配達完了）時はピンを消去
           if (bikeMarkers[bikeId]) {
             map.removeLayer(bikeMarkers[bikeId]);
             delete bikeMarkers[bikeId];
@@ -110,7 +110,7 @@
         }
       });
 
-      document.getElementById('activeCount').innerText = `稼働中: ${activeCount}台`;
+      document.getElementById('activeCount').innerText = '稼働中: ' + activeCount + '台';
       document.getElementById('alertBanner').style.display = nearStoreAlert ? 'block' : 'none';
     });
   </script>
