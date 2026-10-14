@@ -3,116 +3,252 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>店舗用 配達リアルタイムモニター</title>
+  <title>店舗用 配達車両リアルタイムモニター</title>
 
-  <!-- Leaflet CSS & JS (地図ライブラリ) -->
-  <link rel="stylesheet" href="https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app" />
-  <script src="https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app"></script>
+  <!-- Leaflet (地図表示ライブラリ) CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <!-- Firebase SDK -->
-  <script src="https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app"></script>
-  <script src="https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app"></script>
+  <!-- Firebase SDK (v8/v9互換ライブラリ) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
   <style>
-    html, body { margin: 0; padding: 0; height: 100%; font-family: sans-serif; display: flex; flex-direction: column; }
-    #header { background: #333; color: white; padding: 12px 20px; font-size: 18px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
-    #alertBanner { background: #ff3333; color: white; padding: 10px; text-align: center; font-size: 20px; font-weight: bold; display: none; }
-    #map { flex: 1; width: 100%; min-height: 400px; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      background-color: #f8f9fa;
+    }
+    
+    /* ヘッダー・店舗切替エリア */
+    header {
+      background-color: #343a40;
+      color: #ffffff;
+      padding: 10px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      z-index: 1000;
+    }
+    h1 {
+      margin: 0;
+      font-size: 18px;
+    }
+    .store-buttons {
+      display: flex;
+      gap: 8px;
+    }
+    .store-btn {
+      background-color: #495057;
+      color: #ffffff;
+      border: 1px solid #6c757d;
+      padding: 8px 14px;
+      font-size: 14px;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .store-btn.active {
+      background-color: #0d6efd;
+      border-color: #0d6efd;
+      color: #ffffff;
+      box-shadow: 0 0 8px rgba(13, 110, 253, 0.5);
+    }
+
+    /* マップ表示エリア */
+    #map {
+      flex: 1;
+      width: 100%;
+    }
+
+    /* マーカーの見た目カスタム */
+    .bike-marker {
+      background-color: #dc3545;
+      color: white;
+      font-weight: bold;
+      padding: 4px 8px;
+      border-radius: 12px;
+      border: 2px solid white;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      white-space: nowrap;
+      font-size: 13px;
+    }
+    .store-marker {
+      background-color: #198754;
+      color: white;
+      font-weight: bold;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 2px solid white;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+      white-space: nowrap;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
 
-  <div id="header">
-    <span>🍕 配達状況リアルタイムモニター</span>
-    <span id="activeCount">稼働中: 0台</span>
-  </div>
-  <div id="alertBanner">⚠️ 車両が店舗500m圏内に接近中！</div>
+  <!-- ヘッダー＆店舗切り替えボタン -->
+  <header>
+    <h1>🛵 配達リアルタイムモニター</h1>
+    <div class="store-buttons">
+      <button id="btn-store_A" class="store-btn active" onclick="switchStore('store_A')">🏢 矢野駅前店</button>
+      <button id="btn-store_B" class="store-btn" onclick="switchStore('store_B')">🏢 店舗B (東雲店)</button>
+    </div>
+  </header>
+
+  <!-- 地図コンテナ -->
   <div id="map"></div>
 
   <script>
-    // Firebase設定値
+    // -------------------------------------------------------------
+    // 1. 車両定義 (Firebase管理番号 ⇔ 車番)
+    // -------------------------------------------------------------
+    const VEHICLES = {
+      driver_01: "86716",
+      driver_02: "86717",
+      driver_03: "86718",
+      driver_04: "13391",
+      driver_05: "13392",
+      driver_06: "13393",
+      driver_07: "13395",
+      driver_08: "15621",
+      driver_09: "13809"
+    };
+
+    // -------------------------------------------------------------
+    // 2. 店舗定義 (店舗A: 矢野駅前店 / 店舗B: 東雲店)
+    // -------------------------------------------------------------
+    const STORES = {
+      store_A: {
+        name: "店舗A (矢野駅前店)",
+        lat: 34.3528,  // ※矢野駅周辺の座標 (必要に応じて微調整してください)
+        lng: 132.5312
+      },
+      store_B: {
+        name: "店舗B (東雲店)",
+        lat: 34.379289, // 東雲店座標
+        lng: 132.490263
+      }
+    };
+
+    let currentStoreKey = 'store_A'; // 初期表示店舗
+
+    // -------------------------------------------------------------
+    // 3. Firebase 設定
+    // -------------------------------------------------------------
     const firebaseConfig = {
-  apiKey: "AIzaSyBgf38trcys4SOhDhxfTk1d-tCryPvYaL8",
-  authDomain: "pizza-tracker-42bd1.firebaseapp.com",
-  databaseURL: "https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "pizza-tracker-42bd1",
-  storageBucket: "pizza-tracker-42bd1.firebasestorage.app",
-  messagingSenderId: "115595805951",
-  appId: "1:115595805951:web:ae5d7a5d171d7206ce38ca"
-};
+      databaseURL: "https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app"
+    };
 
-    // Firebase初期化
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+    const database = firebase.database();
 
-    // 店舗の基準位置（矢野駅前店）
-    const STORE_LAT = 34.3519265487035;
-    const STORE_LNG = 132.53266164179016;
+    // -------------------------------------------------------------
+    // 4. マップ・マーカー初期化
+    // -------------------------------------------------------------
+    let map;
+    let driverMarkers = {}; // 各バイクのマーカーを保持
+    let storeMarkers = {};  // 各店舗のマーカーを保持
 
-    // 地図の初期化
-    const map = https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app('map').setView([STORE_LAT, STORE_LNG], 14);
+    function initMap() {
+      const initialStore = STORES[currentStoreKey];
 
-    // 地図タイルの読み込み (OpenStreetMap)
-    L.tileLayer('https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap'
-    }).addTo(map);
+      // 地図作成 (矢野駅前店を中心に設定)
+      map = L.map('map').setView([initialStore.lat, initialStore.lng], 14);
 
-    // 店舗のマーカーと500mアラート圏を表示
-    L.marker([STORE_LAT, STORE_LNG]).addTo(map).bindPopup("<b>店舗（矢野駅前店）</b>").openPopup();
-    https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app([STORE_LAT, STORE_LNG], { radius: 500, color: 'red', fillColor: '#f03', fillOpacity: 0.1 }).addTo(map);
+      // OpenStreetMap タイル読み込み
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+      }).addTo(map);
 
-    // 各バイクのピンを保持するオブジェクト
-    const bikeMarkers = {};
+      // 2店舗のピン（緑色）をマップ上に配置
+      Object.keys(STORES).forEach(key => {
+        const store = STORES[key];
+        const storeIcon = L.divIcon({
+          className: 'custom-div-icon',
+          html: `<div class="store-marker">🏢 ${store.name}</div>`,
+          iconSize: [120, 30],
+          iconAnchor: [60, 15]
+        });
 
-    // 距離計算関数（メートル）
-    function getDistance(lat1, lon1, lat2, lon2) {
-      const R = 6371e3;
-      const dLat = (lat2 - lat1) * Math.PI / 180;
-      const dLon = (lon2 - lon1) * Math.PI / 180;
-      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                Math.sin(dLon / 2) * Math.sin(dLon / 2);
-      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    }
-
-    // データベースの変更を常時監視
-    db.ref('drivers').on('value', snapshot => {
-      const drivers = snapshot.val();
-      if (!drivers) return;
-
-      let activeCount = 0;
-      let nearStoreAlert = false;
-
-      Object.keys(drivers).forEach(bikeId => {
-        const driver = drivers[bikeId];
-
-        if (driver.status === 'active' && https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app && driver.lng) {
-          activeCount++;
-          const dist = getDistance(STORE_LAT, STORE_LNG, https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app, driver.lng);
-
-          if (dist <= 500) nearStoreAlert = true;
-
-          const pos = [https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app, driver.lng];
-
-          if (bikeMarkers[bikeId]) {
-            bikeMarkers[bikeId].setLatLng(pos);
-          } else {
-            bikeMarkers[bikeId] = L.marker(pos).addTo(map);
-          }
-
-          const bikeLabel = bikeId.replace('driver_', '') + '号車';
-          bikeMarkers[bikeId].bindTooltip('🛵 ' + bikeLabel + ' (' + Math.round(dist) + 'm)', { permanent: true, direction: 'top' });
-        } else {
-          if (bikeMarkers[bikeId]) {
-            map.removeLayer(bikeMarkers[bikeId]);
-            delete bikeMarkers[bikeId];
-          }
-        }
+        storeMarkers[key] = L.marker([store.lat, store.lng], { icon: storeIcon }).addTo(map);
       });
 
-      document.getElementById('activeCount').innerText = '稼働中: ' + activeCount + '台';
-      document.getElementById('alertBanner').style.display = nearStoreAlert ? 'block' : 'none';
-    });
+      // Firebaseからのリアルタイムデータ監視開始
+      listenToFirebase();
+    }
+
+    // -------------------------------------------------------------
+    // 5. 店舗切り替え処理
+    // -------------------------------------------------------------
+    function switchStore(storeKey) {
+      const store = STORES[storeKey];
+      if (!store) return;
+
+      currentStoreKey = storeKey;
+
+      // ボタンの見た目を更新
+      document.querySelectorAll('.store-btn').forEach(btn => btn.classList.remove('active'));
+      document.getElementById(`btn-${storeKey}`).classList.add('active');
+
+      // 指定した店舗座標を中心にしてズームレベル14へ視点移動
+      map.setView([store.lat, store.lng], 14);
+
+      console.log(`表示店舗を「${store.name}」に変更しました。`);
+    }
+
+    // -------------------------------------------------------------
+    // 6. Firebase リアルタイム同期処理
+    // -------------------------------------------------------------
+    function listenToFirebase() {
+      database.ref('drivers').on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (!data) return;
+
+        Object.keys(data).forEach((driverId) => {
+          const driverData = data[driverId];
+          
+          // 座標データがない場合やステータスが待機中の場合はマーカー除去/非表示
+          if (!driverData.lat || !driverData.lng || driverData.status === "inactive") {
+            if (driverMarkers[driverId]) {
+              map.removeLayer(driverMarkers[driverId]);
+              delete driverMarkers[driverId];
+            }
+            return;
+          }
+
+          const carNumber = VEHICLES[driverId] || driverId; // 車番を取得
+
+          // マーカーアイコンデザイン
+          const bikeIcon = L.divIcon({
+            className: 'custom-div-icon',
+            html: `<div class="bike-marker">🛵 ${carNumber}</div>`,
+            iconSize: [80, 26],
+            iconAnchor: [40, 13]
+          });
+
+          // 既存マーカーがあれば移動、無ければ新規作成
+          if (driverMarkers[driverId]) {
+            driverMarkers[driverId].setLatLng([driverData.lat, driverData.lng]);
+          } else {
+            driverMarkers[driverId] = L.marker([driverData.lat, driverData.lng], { icon: bikeIcon })
+              .addTo(map)
+              .bindPopup(`<b>車番: ${carNumber}</b><br>管理ID: ${driverId}`);
+          }
+        });
+      });
+    }
+
+    // ページ読み込み完了時にマップを起動
+    window.onload = initMap;
   </script>
 </body>
 </html>
