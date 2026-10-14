@@ -68,7 +68,7 @@
       width: 100%;
     }
 
-    /* マーカーデザイン */
+    /* バイクマーカー（最前面表示） */
     .bike-marker {
       background-color: #dc3545;
       color: white;
@@ -76,10 +76,12 @@
       padding: 4px 8px;
       border-radius: 12px;
       border: 2px solid white;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      box-shadow: 0 3px 8px rgba(0,0,0,0.4);
       white-space: nowrap;
       font-size: 13px;
     }
+
+    /* 店舗マーカー（背面表示） */
     .store-marker {
       background-color: #198754;
       color: white;
@@ -87,9 +89,10 @@
       padding: 6px 10px;
       border-radius: 6px;
       border: 2px solid white;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
       white-space: nowrap;
       font-size: 14px;
+      opacity: 0.9;
     }
   </style>
 </head>
@@ -129,17 +132,17 @@
     const STORES = {
       store_A: {
         name: "矢野駅前店",
-        lat: 34.351867,  // 矢野駅前店 座標
+        lat: 34.351867,
         lng: 132.532665
       },
       store_B: {
         name: "広島東雲店",
-        lat: 34.379289,  // 広島東雲店 座標
+        lat: 34.379289,
         lng: 132.490263
       }
     };
 
-    let currentStoreKey = 'store_A'; // 初期表示店舗
+    let currentStoreKey = 'store_A';
 
     // -------------------------------------------------------------
     // 3. Firebase 設定
@@ -161,15 +164,13 @@
     function initMap() {
       const initialStore = STORES[currentStoreKey];
 
-      // 地図作成 (初期値: 矢野駅前店を中心)
       map = L.map('map').setView([initialStore.lat, initialStore.lng], 14);
 
-      // OpenStreetMap タイル読み込み
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
       }).addTo(map);
 
-      // 2店舗のピン（緑色）をマップ上に常時配置
+      // 店舗ピン（重なり順を一番下に設定 zIndexOffset: -1000）
       Object.keys(STORES).forEach(key => {
         const store = STORES[key];
         const storeIcon = L.divIcon({
@@ -179,10 +180,12 @@
           iconAnchor: [60, 15]
         });
 
-        storeMarkers[key] = L.marker([store.lat, store.lng], { icon: storeIcon }).addTo(map);
+        storeMarkers[key] = L.marker([store.lat, store.lng], { 
+          icon: storeIcon,
+          zIndexOffset: -1000 // 店舗ピンを常にバイクより後ろに描画
+        }).addTo(map);
       });
 
-      // Firebaseからのリアルタイムデータ監視開始
       listenToFirebase();
     }
 
@@ -195,14 +198,10 @@
 
       currentStoreKey = storeKey;
 
-      // ボタンのハイライト状態を更新
       document.querySelectorAll('.store-btn').forEach(btn => btn.classList.remove('active'));
       document.getElementById(`btn-${storeKey}`).classList.add('active');
 
-      // 指定した店舗座標を中心にして視点移動
       map.setView([store.lat, store.lng], 14);
-
-      console.log(`表示店舗を「${store.name}」に変更しました。`);
     }
 
     // -------------------------------------------------------------
@@ -216,7 +215,6 @@
         Object.keys(data).forEach((driverId) => {
           const driverData = data[driverId];
           
-          // 座標データがない場合やステータスが待機中の場合はマーカー除去/非表示
           if (!driverData.lat || !driverData.lng || driverData.status === "inactive") {
             if (driverMarkers[driverId]) {
               map.removeLayer(driverMarkers[driverId]);
@@ -225,9 +223,8 @@
             return;
           }
 
-          const carNumber = VEHICLES[driverId] || driverId; // 車番を取得
+          const carNumber = VEHICLES[driverId] || driverId;
 
-          // マーカーアイコンデザイン
           const bikeIcon = L.divIcon({
             className: 'custom-div-icon',
             html: `<div class="bike-marker">🛵 ${carNumber}</div>`,
@@ -239,15 +236,17 @@
           if (driverMarkers[driverId]) {
             driverMarkers[driverId].setLatLng([driverData.lat, driverData.lng]);
           } else {
-            driverMarkers[driverId] = L.marker([driverData.lat, driverData.lng], { icon: bikeIcon })
-              .addTo(map)
-              .bindPopup(`<b>車番: ${carNumber}</b><br>管理ID: ${driverId}`);
+            driverMarkers[driverId] = L.marker([driverData.lat, driverData.lng], { 
+              icon: bikeIcon,
+              zIndexOffset: 1000 // バイクのピンを常に最前面に表示
+            })
+            .addTo(map)
+            .bindPopup(`<b>車番: ${carNumber}</b><br>管理ID: ${driverId}`);
           }
         });
       });
     }
 
-    // ページ読み込み完了時にマップを起動
     window.onload = initMap;
   </script>
 </body>
