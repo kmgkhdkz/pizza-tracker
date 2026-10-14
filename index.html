@@ -6,8 +6,8 @@
   <title>店舗用 配達リアルタイムモニター</title>
 
   <!-- Leaflet CSS & JS (地図ライブラリ) -->
-  <link rel="stylesheet" href="[suspicious link removed]" />
-  <script src="[suspicious link removed]"></script>
+  <link rel="stylesheet" href="https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app" />
+  <script src="https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app"></script>
 
   <!-- Firebase SDK -->
   <script src="https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app"></script>
@@ -53,7 +53,7 @@
     const map = https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app('map').setView([STORE_LAT, STORE_LNG], 14);
 
     // 地図タイルの読み込み (OpenStreetMap)
-    L.tileLayer('[suspicious link removed]{z}/{x}/{y}.png', {
+    L.tileLayer('https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap'
     }).addTo(map);
 
