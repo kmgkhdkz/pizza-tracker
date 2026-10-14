@@ -3,105 +3,257 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>配達GPS送信</title>
-  <style>
-    body { font-family: sans-serif; text-align: center; padding: 20px; background: #f4f4f4; }
-    h1 { font-size: 24px; }
-    select, button { font-size: 20px; padding: 15px 30px; margin: 10px; border-radius: 10px; }
-    .btn-start { background: #28a745; color: white; border: none; width: 80%; }
-    .btn-stop { background: #dc3545; color: white; border: none; width: 80%; }
-    #status { font-size: 18px; font-weight: bold; margin-top: 20px; color: #333; }
-  </style>
+  <title>配達位置送信システム</title>
 
-  <!-- Firebase SDK -->
-  <script src="https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app"></script>
-  <script src="https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app"></script>
+  <!-- Firebase SDK (v8/v9互換ライブラリ) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      text-align: center;
+      padding: 16px;
+      background-color: #f0f2f5;
+      margin: 0;
+    }
+    .card {
+      background: #ffffff;
+      padding: 24px 20px;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      max-width: 420px;
+      margin: 0 auto;
+    }
+    h2 {
+      margin-top: 0;
+      color: #333333;
+      font-size: 22px;
+    }
+    .select-group {
+      margin: 20px 0;
+      text-align: left;
+    }
+    label {
+      font-size: 14px;
+      font-weight: bold;
+      color: #555555;
+      display: block;
+      margin-bottom: 8px;
+    }
+    select {
+      width: 100%;
+      padding: 14px;
+      font-size: 18px;
+      font-weight: bold;
+      border: 2px solid #007bff;
+      border-radius: 10px;
+      background-color: #ffffff;
+      color: #333333;
+      outline: none;
+    }
+    select:disabled {
+      background-color: #e9ecef;
+      border-color: #ced4da;
+      color: #6c757d;
+    }
+    .status {
+      font-size: 18px;
+      font-weight: bold;
+      margin: 20px 0;
+      padding: 14px;
+      border-radius: 10px;
+      transition: all 0.3s ease;
+    }
+    .status-off {
+      background-color: #e9ecef;
+      color: #495057;
+    }
+    .status-on {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    button {
+      width: 100%;
+      padding: 18px;
+      font-size: 20px;
+      font-weight: bold;
+      border: none;
+      border-radius: 10px;
+      color: #ffffff;
+      cursor: pointer;
+      margin-top: 10px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      transition: background-color 0.2s ease;
+    }
+    .btn-start { background-color: #28a745; }
+    .btn-start:active { background-color: #218838; }
+    .btn-stop { background-color: #dc3545; }
+    .btn-stop:active { background-color: #c82333; }
+
+    .info {
+      font-size: 13px;
+      color: #6c757d;
+      margin-top: 20px;
+      border-top: 1px solid #dee2e6;
+      padding-top: 15px;
+      text-align: left;
+    }
+    .info p { margin: 6px 0; }
+    .coord { font-family: monospace; font-weight: bold; }
+  </style>
 </head>
 <body>
 
-  <h1>🍕 配達GPSTracker</h1>
+  <div class="card">
+    <h2>🛵 配達位置送信</h2>
+    
+    <!-- 車両選択欄 -->
+    <div class="select-group">
+      <label for="vehicle-select">使用する車両（車番）を選択:</label>
+      <select id="vehicle-select">
+        <option value="driver_01">車番: 86716 (driver_01)</option>
+        <option value="driver_02">車番: 86717 (driver_02)</option>
+        <option value="driver_03">車番: 86718 (driver_03)</option>
+        <option value="driver_04">車番: 13391 (driver_04)</option>
+        <option value="driver_05">車番: 13392 (driver_05)</option>
+        <option value="driver_06">車番: 13393 (driver_06)</option>
+        <option value="driver_07">車番: 13395 (driver_07)</option>
+        <option value="driver_08">車番: 15621 (driver_08)</option>
+        <option value="driver_09">車番: 13809 (driver_09)</option>
+      </select>
+    </div>
 
-  <label for="bikeSelect">車両選択：</label><br>
-  <select id="bikeSelect">
-    <option value="driver_01">01号車</option>
-    <option value="driver_02">02号車</option>
-    <option value="driver_03">03号車</option>
-    <option value="driver_04">04号車</option>
-    <option value="driver_05">05号車</option>
-  </select>
+    <!-- ステータス表示 -->
+    <div id="status-box" class="status status-off">
+      待機中 (送信OFF)
+    </div>
 
-  <br><br>
-  <button id="startBtn" class="btn-start" onclick="startTracking()">▶ 配達開始</button>
-  <button id="stopBtn" class="btn-stop" onclick="stopTracking()" style="display:none;">■ 配達完了（帰店）</button>
+    <!-- 配達開始 / 停止ボタン -->
+    <button id="toggle-btn" class="btn-start" onclick="toggleTracking()">配達開始 (送信ON)</button>
 
-  <div id="status">待機中...</div>
+    <div class="info">
+      <p>送信ID: <span id="id-display" class="coord">driver_01</span></p>
+      <p>最終座標: <span id="location-display" class="coord">未送信</span></p>
+    </div>
+  </div>
 
   <script>
-   const firebaseConfig = {
-  apiKey: "AIzaSyBgf38trcys4SOhDhxfTk1d-tCryPvYaL8",
-  authDomain: "pizza-tracker-42bd1.firebaseapp.com",
-  databaseURL: "https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "pizza-tracker-42bd1",
-  storageBucket: "pizza-tracker-42bd1.firebasestorage.app",
-  messagingSenderId: "115595805951",
-  appId: "1:115595805951:web:ae5d7a5d171d7206ce38ca"
-};
-    /* 例:
+    // -------------------------------------------------------------
+    // 1. Firebase設定
+    // -------------------------------------------------------------
     const firebaseConfig = {
-      apiKey: "AIzaSy...",
-      databaseURL: "[suspicious link removed]",
-      // ...
+      // ⚠️ databaseURL はご自身の実際のFirebase URLに置き換えてください
+      databaseURL: "https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app"
     };
-    */
-    
+
     // Firebase初期化
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+    const database = firebase.database();
 
+    // -------------------------------------------------------------
+    // 2. 変数・エレメント定義
+    // -------------------------------------------------------------
     let watchId = null;
+    let isTracking = false;
 
+    const vehicleSelect = document.getElementById('vehicle-select');
+    const statusBox = document.getElementById('status-box');
+    const toggleBtn = document.getElementById('toggle-btn');
+    const locationDisplay = document.getElementById('location-display');
+    const idDisplay = document.getElementById('id-display');
+
+    // ドロップダウン選択時に表示用IDを更新
+    vehicleSelect.addEventListener('change', () => {
+      idDisplay.innerText = vehicleSelect.value;
+    });
+
+    // -------------------------------------------------------------
+    // 3. トラッキング開始・停止切り替え
+    // -------------------------------------------------------------
+    function toggleTracking() {
+      if (!isTracking) {
+        startTracking();
+      } else {
+        stopTracking();
+      }
+    }
+
+    // GPS送信開始
     function startTracking() {
-      const bikeId = document.getElementById('bikeSelect').value;
       if (!navigator.geolocation) {
-        alert("GPSがサポートされていません");
+        alert("お使いの端末・ブラウザはGPS機能をサポートしていません。");
         return;
       }
 
-      document.getElementById('startBtn').style.display = "none";
-      document.getElementById('stopBtn').style.display = "inline-block";
-      document.getElementById('status').innerText = "📡 GPS送信中 (" + bikeId + ")";
+      const options = {
+        enableHighAccuracy: true, // 高精度GPSを取得
+        timeout: 10000,           // 10秒応答がなければタイムアウト
+        maximumAge: 0             // キャッシュされた古い位置を使わない
+      };
 
-      // 位置情報をリアルタイム取得・送信
-      watchId = navigator.geolocation.watchPosition(position => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
+      // 位置情報の常時監視を開始
+      watchId = navigator.geolocation.watchPosition(sendLocation, handleError, options);
 
-        db.ref('drivers/' + bikeId).set({
-          lat: lat,
-          lng: lng,
-          updatedAt: https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app(),
-          status: "active"
-        });
-      }, error => {
-        console.error(error);
-        document.getElementById('status').innerText = "エラー: GPS取得失敗";
-      }, {
-        enableHighAccuracy: true,
-        maximumAge: 0,
-        timeout: 5000
-      });
+      isTracking = true;
+      vehicleSelect.disabled = true; // 配達中は車両変更不可にする
+
+      statusBox.className = "status status-on";
+      statusBox.innerText = "🟢 配達中 (GPSリアルタイム送信中)";
+
+      toggleBtn.className = "btn-stop";
+      toggleBtn.innerText = "配達完了 (送信OFF)";
     }
 
-    function stopTracking() {
-      if (watchId) {
-        navigator.geolocation.clearWatch(watchId);
-      }
-      const bikeId = document.getElementById('bikeSelect').value;
-      db.ref('drivers/' + bikeId).update({ status: "inactive" });
+    // GPSデータ送信処理
+    function sendLocation(position) {
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+      const driverId = vehicleSelect.value; // 選択中の管理番号 (driver_01 ~ driver_09)
 
-      document.getElementById('startBtn').style.display = "inline-block";
-      document.getElementById('stopBtn').style.display = "none";
-      document.getElementById('status').innerText = "停止しました（待機中）";
+      // Firebase へデータをリアルタイム上書き更新 (.set)
+      database.ref('drivers/' + driverId).set({
+        lat: lat,
+        lng: lng,
+        status: "active",
+        updatedAt: Date.now()
+      });
+
+      // 画面の座標表示を更新
+      locationDisplay.innerText = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    }
+
+    // エラーハンドリング
+    function handleError(error) {
+      console.warn("GPSエラー:", error.message);
+    }
+
+    // GPS送信停止
+    function stopTracking() {
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+      }
+
+      const driverId = vehicleSelect.value;
+
+      // 停止時、Firebase上のステータスを inactive に更新
+      database.ref('drivers/' + driverId).update({
+        status: "inactive",
+        updatedAt: Date.now()
+      });
+
+      isTracking = false;
+      vehicleSelect.disabled = false; // 車両選択を解禁
+
+      statusBox.className = "status status-off";
+      statusBox.innerText = "待機中 (送信OFF)";
+      locationDisplay.innerText = "未送信";
+
+      toggleBtn.className = "btn-start";
+      toggleBtn.innerText = "配達開始 (送信ON)";
     }
   </script>
 </body>
