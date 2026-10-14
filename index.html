@@ -230,4 +230,25 @@
           // マーカーアイコンデザイン
           const bikeIcon = L.divIcon({
             className: 'custom-div-icon',
-            html: `<div class="
+            html: `<div class="bike-marker">🛵 ${carNumber}</div>`,
+            iconSize: [80, 26],
+            iconAnchor: [40, 13]
+          });
+
+          // 既存マーカーがあれば移動、無ければ新規作成
+          if (driverMarkers[driverId]) {
+            driverMarkers[driverId].setLatLng([driverData.lat, driverData.lng]);
+          } else {
+            driverMarkers[driverId] = L.marker([driverData.lat, driverData.lng], { icon: bikeIcon })
+              .addTo(map)
+              .bindPopup(`<b>車番: ${carNumber}</b><br>管理ID: ${driverId}`);
+          }
+        });
+      });
+    }
+
+    // ページ読み込み完了時にマップを起動
+    window.onload = initMap;
+  </script>
+</body>
+</html>
