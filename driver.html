@@ -37,23 +37,17 @@
   <div id="status">待機中...</div>
 
   <script>
-  const firebaseConfig = {
-  apiKey: "AIzaSyBgf38trcys4SOhDhxfTk1d-tCryPvYaL8",
-  authDomain: "pizza-tracker-42bd1.firebaseapp.com",
-  databaseURL: "https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "pizza-tracker-42bd1",
-  storageBucket: "pizza-tracker-42bd1.firebasestorage.app",
-  messagingSenderId: "115595805951",
-  appId: "1:115595805951:web:ae5d7a5d171d7206ce38ca"
-};
-    /* 例:
+    // Firebase設定値
     const firebaseConfig = {
-      apiKey: "AIzaSy...",
+      apiKey: "AIzaSyBgf38trcys4SOhDhxfTk1d-tCryPvYaL8",
+      authDomain: "[suspicious link removed]",
       databaseURL: "[suspicious link removed]",
-      // ...
+      projectId: "pizza-tracker-42bd1",
+      storageBucket: "[不審なリンクを削除しました]",
+      messagingSenderId: "115595805951",
+      appId: "1:115595805951:web:ae5d7a5d171d7206ce38ca"
     };
-    */
-    
+
     // Firebase初期化
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
@@ -84,11 +78,11 @@
         });
       }, error => {
         console.error(error);
-        document.getElementById('status').innerText = "エラー: GPS取得失敗";
+        document.getElementById('status').innerText = "エラー: GPS取得失敗 (" + error.message + ")";
       }, {
         enableHighAccuracy: true,
         maximumAge: 0,
-        timeout: 5000
+        timeout: 10000
       });
     }
 
