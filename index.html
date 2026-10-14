@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>店舗用 配達車両位置モニター</title>
+  <title>店舗用 配達車両位置モニター - 東雲店</title>
 
   <!-- Leaflet CSS (地図表示用) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -144,6 +144,22 @@
       gap: 4px;
     }
 
+    /* 店舗マーカーアイコンのCSS */
+    .shop-marker {
+      background: #dc3545;
+      color: #ffffff;
+      border: 2px solid #ffffff;
+      border-radius: 20px;
+      padding: 4px 10px;
+      font-weight: bold;
+      font-size: 13px;
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
     @media (max-width: 768px) {
       .main-container {
         flex-direction: column-reverse;
@@ -158,8 +174,8 @@
 <body>
 
   <header>
-    <h1>🛵 店舗用 配達車両リアルタイムモニター</h1>
-    <span id="active-count" style="font-size: 14px;">稼働中: 0 / 9 台</span>
+    <h1>🛵 東雲店 - 配達車両リアルタイムモニター</h1>
+    <span id="active-count" style="font-size: 14px;">配達中: 0 / 9 台</span>
   </header>
 
   <div class="main-container">
@@ -177,8 +193,14 @@
 
   <script>
     // -------------------------------------------------------------
-    // 1. 車両定義 (全9台の対応表)
+    // 1. 車両定義 & 店舗座標の設定（東雲店）
     // -------------------------------------------------------------
+    const SHOP_LOCATION = {
+      name: "東雲店",
+      lat: 34.380486,
+      lng: 132.485128
+    };
+
     const VEHICLES = {
       "driver_01": { carNum: "86716" },
       "driver_02": { carNum: "86717" },
@@ -202,21 +224,32 @@
     const database = firebase.database();
 
     // -------------------------------------------------------------
-    // 3. 地図 (Leaflet) の初期化
+    // 3. 地図 (Leaflet) の初期化（中心位置を東雲店に設定）
     // -------------------------------------------------------------
-    // デフォルト位置 (東京駅周辺 / 必要に応じて店舗座標に変更可)
-    const map = L.map('map').setView([35.681236, 139.767125], 14);
+    const map = L.map('map').setView([SHOP_LOCATION.lat, SHOP_LOCATION.lng], 15);
 
     // OpenStreetMapのタイルを使用
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
 
+    // 東雲店の店舗マーカーを表示
+    const shopIcon = L.divIcon({
+      className: 'shop-icon-wrapper',
+      html: `<div class="shop-marker">🏠 ${SHOP_LOCATION.name}</div>`,
+      iconSize: [100, 32],
+      iconAnchor: [50, 16]
+    });
+
+    L.marker([SHOP_LOCATION.lat, SHOP_LOCATION.lng], { icon: shopIcon })
+      .addTo(map)
+      .bindPopup(`<b>${SHOP_LOCATION.name}</b><br>拠点位置`);
+
     // 各車両の Leaflet マーカーオブジェクトを保持するオブジェクト
     const markers = {};
 
     // -------------------------------------------------------------
-    // 4. カスタムマーカーアイコン生成用関数
+    // 4. 配達車両のカスタムマーカーアイコン生成関数
     // -------------------------------------------------------------
     function createCustomIcon(carNum) {
       return L.divIcon({
