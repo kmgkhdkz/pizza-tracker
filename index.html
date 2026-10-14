@@ -10,8 +10,8 @@
   <script src="[suspicious link removed]"></script>
 
   <!-- Firebase SDK -->
-  <script src="[https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app]"></script>
-  <script src="[https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app]"></script>
+  <script src="https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app"></script>
+  <script src="https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app"></script>
 
   <style>
     html, body { margin: 0; padding: 0; height: 100%; font-family: sans-serif; display: flex; flex-direction: column; }
@@ -50,7 +50,7 @@
     const STORE_LNG = 132.53266164179016;
 
     // 地図の初期化
-    const map = [https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app]('map').setView([STORE_LAT, STORE_LNG], 14);
+    const map = https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app('map').setView([STORE_LAT, STORE_LNG], 14);
 
     // 地図タイルの読み込み (OpenStreetMap)
     L.tileLayer('[suspicious link removed]{z}/{x}/{y}.png', {
@@ -59,7 +59,7 @@
 
     // 店舗のマーカーと500mアラート圏を表示
     L.marker([STORE_LAT, STORE_LNG]).addTo(map).bindPopup("<b>店舗（矢野駅前店）</b>").openPopup();
-    [https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app]([STORE_LAT, STORE_LNG], { radius: 500, color: 'red', fillColor: '#f03', fillOpacity: 0.1 }).addTo(map);
+    https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app([STORE_LAT, STORE_LNG], { radius: 500, color: 'red', fillColor: '#f03', fillOpacity: 0.1 }).addTo(map);
 
     // 各バイクのピンを保持するオブジェクト
     const bikeMarkers = {};
@@ -86,13 +86,13 @@
       Object.keys(drivers).forEach(bikeId => {
         const driver = drivers[bikeId];
 
-        if (driver.status === 'active' && [https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app] && driver.lng) {
+        if (driver.status === 'active' && https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app && driver.lng) {
           activeCount++;
-          const dist = getDistance(STORE_LAT, STORE_LNG, [https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app], driver.lng);
+          const dist = getDistance(STORE_LAT, STORE_LNG, https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app, driver.lng);
 
           if (dist <= 500) nearStoreAlert = true;
 
-          const pos = [[https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app], driver.lng];
+          const pos = [https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app, driver.lng];
 
           if (bikeMarkers[bikeId]) {
             bikeMarkers[bikeId].setLatLng(pos);
