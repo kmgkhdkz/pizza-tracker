@@ -3,218 +3,146 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>店舗用 配達車両位置モニター - 東雲店</title>
+  <title>店舗用 配達車両リアルタイムモニター</title>
 
-  <!-- Leaflet CSS (地図表示用) -->
+  <!-- Leaflet (地図表示ライブラリ) CSS & JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <!-- Firebase SDK (v8/v9互換ライブラリ) -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
-  <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
   <style>
     * { box-sizing: border-box; }
-    body, html {
+    body {
       margin: 0;
       padding: 0;
-      height: 100%;
-      width: 100%;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       display: flex;
       flex-direction: column;
+      height: 100vh;
+      background-color: #f8f9fa;
     }
-
+    
+    /* ヘッダー・店舗切替エリア */
     header {
       background-color: #343a40;
       color: #ffffff;
-      padding: 12px 20px;
+      padding: 10px 16px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
       z-index: 1000;
     }
-
-    header h1 {
+    h1 {
       margin: 0;
       font-size: 18px;
     }
-
-    .main-container {
+    .store-buttons {
       display: flex;
-      flex: 1;
-      height: calc(100vh - 50px);
-      position: relative;
+      gap: 8px;
+    }
+    .store-btn {
+      background-color: #495057;
+      color: #ffffff;
+      border: 1px solid #6c757d;
+      padding: 8px 14px;
+      font-size: 14px;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .store-btn.active {
+      background-color: #0d6efd;
+      border-color: #0d6efd;
+      color: #ffffff;
+      box-shadow: 0 0 8px rgba(13, 110, 253, 0.5);
     }
 
-    /* 地図エリア */
+    /* マップ表示エリア */
     #map {
       flex: 1;
-      height: 100%;
       width: 100%;
     }
 
-    /* サイドバー（車両一覧表示） */
-    .sidebar {
-      width: 320px;
-      background: #ffffff;
-      border-left: 1px solid #dee2e6;
-      overflow-y: auto;
-      padding: 15px;
-      box-shadow: -2px 0 5px rgba(0,0,0,0.05);
-    }
-
-    .sidebar h2 {
-      font-size: 16px;
-      margin-top: 0;
-      margin-bottom: 12px;
-      padding-bottom: 8px;
-      border-bottom: 2px solid #007bff;
-      color: #495057;
-    }
-
-    .driver-card {
-      background: #f8f9fa;
-      border: 1px solid #e9ecef;
-      border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 10px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .driver-card:hover {
-      background: #e9ecef;
-      border-color: #adb5bd;
-    }
-
-    .driver-card.active {
-      border-left: 4px solid #28a745;
-    }
-
-    .driver-card.inactive {
-      border-left: 4px solid #6c757d;
-      opacity: 0.7;
-    }
-
-    .driver-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 6px;
-    }
-
-    .car-number {
-      font-size: 16px;
+    /* マーカーデザイン */
+    .bike-marker {
+      background-color: #dc3545;
+      color: white;
       font-weight: bold;
-      color: #212529;
-    }
-
-    .status-badge {
-      font-size: 11px;
-      padding: 3px 8px;
-      border-radius: 12px;
-      font-weight: bold;
-    }
-
-    .badge-active { background: #d4edda; color: #155724; }
-    .badge-inactive { background: #e2e3e5; color: #383d41; }
-
-    .driver-info {
-      font-size: 12px;
-      color: #6c757d;
-      line-height: 1.4;
-    }
-
-    /* カスタムマーカーアイコンのCSS */
-    .custom-marker {
-      background: #ffffff;
-      border: 2px solid #007bff;
-      border-radius: 20px;
       padding: 4px 8px;
-      font-weight: bold;
-      font-size: 12px;
-      white-space: nowrap;
+      border-radius: 12px;
+      border: 2px solid white;
       box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    /* 店舗マーカーアイコンのCSS */
-    .shop-marker {
-      background: #dc3545;
-      color: #ffffff;
-      border: 2px solid #ffffff;
-      border-radius: 20px;
-      padding: 4px 10px;
-      font-weight: bold;
-      font-size: 13px;
       white-space: nowrap;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-      display: flex;
-      align-items: center;
-      gap: 4px;
+      font-size: 13px;
     }
-
-    @media (max-width: 768px) {
-      .main-container {
-        flex-direction: column-reverse;
-      }
-      .sidebar {
-        width: 100%;
-        height: 200px;
-      }
+    .store-marker {
+      background-color: #198754;
+      color: white;
+      font-weight: bold;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 2px solid white;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+      white-space: nowrap;
+      font-size: 14px;
     }
   </style>
 </head>
 <body>
 
+  <!-- ヘッダー＆店舗切り替えボタン (矢野駅前店 / 広島東雲店) -->
   <header>
-    <h1>🛵 東雲店 - 配達車両リアルタイムモニター</h1>
-    <span id="active-count" style="font-size: 14px;">配達中: 0 / 9 台</span>
+    <h1>🛵 配達リアルタイムモニター</h1>
+    <div class="store-buttons">
+      <button id="btn-store_A" class="store-btn active" onclick="switchStore('store_A')">🏢 矢野駅前店</button>
+      <button id="btn-store_B" class="store-btn" onclick="switchStore('store_B')">🏢 広島東雲店</button>
+    </div>
   </header>
 
-  <div class="main-container">
-    <!-- 地図領域 -->
-    <div id="map"></div>
-
-    <!-- サイドバー領域 -->
-    <div class="sidebar">
-      <h2>配達車両一覧</h2>
-      <div id="driver-list">
-        <!-- JSで動的に一覧を生成 -->
-      </div>
-    </div>
-  </div>
+  <!-- 地図コンテナ -->
+  <div id="map"></div>
 
   <script>
     // -------------------------------------------------------------
-    // 1. 車両定義 & 店舗座標の設定（東雲店）
+    // 1. 車両定義 (Firebase管理番号 ⇔ 車番)
     // -------------------------------------------------------------
-    const SHOP_LOCATION = {
-      name: "東雲店",
-      lat: 34.380486,
-      lng: 132.485128
-    };
-
     const VEHICLES = {
-      "driver_01": { carNum: "86716" },
-      "driver_02": { carNum: "86717" },
-      "driver_03": { carNum: "86718" },
-      "driver_04": { carNum: "13391" },
-      "driver_05": { carNum: "13392" },
-      "driver_06": { carNum: "13393" },
-      "driver_07": { carNum: "13395" },
-      "driver_08": { carNum: "15621" },
-      "driver_09": { carNum: "13809" }
+      driver_01: "86716",
+      driver_02: "86717",
+      driver_03: "86718",
+      driver_04: "13391",
+      driver_05: "13392",
+      driver_06: "13393",
+      driver_07: "13395",
+      driver_08: "15621",
+      driver_09: "13809"
     };
 
     // -------------------------------------------------------------
-    // 2. Firebase設定
+    // 2. 店舗定義 (矢野駅前店 / 広島東雲店)
+    // -------------------------------------------------------------
+    const STORES = {
+      store_A: {
+        name: "矢野駅前店",
+        lat: 34.351867,  // 矢野駅前店 座標
+        lng: 132.532665
+      },
+      store_B: {
+        name: "広島東雲店",
+        lat: 34.379289,  // 広島東雲店 座標
+        lng: 132.490263
+      }
+    };
+
+    let currentStoreKey = 'store_A'; // 初期表示店舗
+
+    // -------------------------------------------------------------
+    // 3. Firebase 設定
     // -------------------------------------------------------------
     const firebaseConfig = {
       databaseURL: "https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app"
@@ -224,121 +152,82 @@
     const database = firebase.database();
 
     // -------------------------------------------------------------
-    // 3. 地図 (Leaflet) の初期化（中心位置を東雲店に設定）
+    // 4. マップ・マーカー初期化
     // -------------------------------------------------------------
-    const map = L.map('map').setView([SHOP_LOCATION.lat, SHOP_LOCATION.lng], 15);
+    let map;
+    let driverMarkers = {};
+    let storeMarkers = {};
 
-    // OpenStreetMapのタイルを使用
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map);
+    function initMap() {
+      const initialStore = STORES[currentStoreKey];
 
-    // 東雲店の店舗マーカーを表示
-    const shopIcon = L.divIcon({
-      className: 'shop-icon-wrapper',
-      html: `<div class="shop-marker">🏠 ${SHOP_LOCATION.name}</div>`,
-      iconSize: [100, 32],
-      iconAnchor: [50, 16]
-    });
+      // 地図作成 (初期値: 矢野駅前店を中心)
+      map = L.map('map').setView([initialStore.lat, initialStore.lng], 14);
 
-    L.marker([SHOP_LOCATION.lat, SHOP_LOCATION.lng], { icon: shopIcon })
-      .addTo(map)
-      .bindPopup(`<b>${SHOP_LOCATION.name}</b><br>拠点位置`);
+      // OpenStreetMap タイル読み込み
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+      }).addTo(map);
 
-    // 各車両の Leaflet マーカーオブジェクトを保持するオブジェクト
-    const markers = {};
+      // 2店舗のピン（緑色）をマップ上に常時配置
+      Object.keys(STORES).forEach(key => {
+        const store = STORES[key];
+        const storeIcon = L.divIcon({
+          className: 'custom-div-icon',
+          html: `<div class="store-marker">🏢 ${store.name}</div>`,
+          iconSize: [120, 30],
+          iconAnchor: [60, 15]
+        });
 
-    // -------------------------------------------------------------
-    // 4. 配達車両のカスタムマーカーアイコン生成関数
-    // -------------------------------------------------------------
-    function createCustomIcon(carNum) {
-      return L.divIcon({
-        className: 'custom-icon-wrapper',
-        html: `<div class="custom-marker">🛵 <b>${carNum}</b></div>`,
-        iconSize: [80, 30],
-        iconAnchor: [40, 15]
+        storeMarkers[key] = L.marker([store.lat, store.lng], { icon: storeIcon }).addTo(map);
       });
+
+      // Firebaseからのリアルタイムデータ監視開始
+      listenToFirebase();
     }
 
     // -------------------------------------------------------------
-    // 5. Firebase Realtime Database 監視・同期処理
+    // 5. 店舗切り替え処理
     // -------------------------------------------------------------
-    const driversRef = database.ref('drivers');
+    function switchStore(storeKey) {
+      const store = STORES[storeKey];
+      if (!store) return;
 
-    driversRef.on('value', (snapshot) => {
-      const data = snapshot.val() || {};
-      let activeCount = 0;
+      currentStoreKey = storeKey;
 
-      const driverListEl = document.getElementById('driver-list');
-      driverListEl.innerHTML = ''; // 一覧の再描写
+      // ボタンのハイライト状態を更新
+      document.querySelectorAll('.store-btn').forEach(btn => btn.classList.remove('active'));
+      document.getElementById(`btn-${storeKey}`).classList.add('active');
 
-      // 設定された全9台のループ処理
-      Object.keys(VEHICLES).forEach((driverId) => {
-        const vehicle = VEHICLES[driverId];
-        const driverData = data[driverId];
+      // 指定した店舗座標を中心にして視点移動
+      map.setView([store.lat, store.lng], 14);
 
-        const isActive = driverData && driverData.status === 'active' && driverData.lat && driverData.lng;
-        if (isActive) activeCount++;
+      console.log(`表示店舗を「${store.name}」に変更しました。`);
+    }
 
-        // 1. 地図上のマーカー更新
-        if (isActive) {
-          const latLng = [driverData.lat, driverData.lng];
+    // -------------------------------------------------------------
+    // 6. Firebase リアルタイム同期処理
+    // -------------------------------------------------------------
+    function listenToFirebase() {
+      database.ref('drivers').on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (!data) return;
 
-          if (markers[driverId]) {
-            // 既存マーカーの位置を移動
-            markers[driverId].setLatLng(latLng);
-          } else {
-            // 新規マーカー作成
-            markers[driverId] = L.marker(latLng, {
-              icon: createCustomIcon(vehicle.carNum)
-            }).addTo(map);
-
-            // マーカークリック時のポップアップ
-            markers[driverId].bindPopup(`<b>車番: ${vehicle.carNum}</b><br>管理ID: ${driverId}`);
+        Object.keys(data).forEach((driverId) => {
+          const driverData = data[driverId];
+          
+          // 座標データがない場合やステータスが待機中の場合はマーカー除去/非表示
+          if (!driverData.lat || !driverData.lng || driverData.status === "inactive") {
+            if (driverMarkers[driverId]) {
+              map.removeLayer(driverMarkers[driverId]);
+              delete driverMarkers[driverId];
+            }
+            return;
           }
-        } else {
-          // 待機中（非アクティブ）の場合はマップ上のピンを消去
-          if (markers[driverId]) {
-            map.removeLayer(markers[driverId]);
-            delete markers[driverId];
-          }
-        }
 
-        // 2. サイドバーの車両カード追加
-        const card = document.createElement('div');
-        card.className = `driver-card ${isActive ? 'active' : 'inactive'}`;
+          const carNumber = VEHICLES[driverId] || driverId; // 車番を取得
 
-        const lastUpdated = driverData && driverData.updatedAt
-          ? new Date(driverData.updatedAt).toLocaleTimeString('ja-JP')
-          : '未受信';
-
-        card.innerHTML = `
-          <div class="driver-header">
-            <span class="car-number">🛵 車番: ${vehicle.carNum}</span>
-            <span class="status-badge ${isActive ? 'badge-active' : 'badge-inactive'}">
-              ${isActive ? '配達中' : '待機中'}
-            </span>
-          </div>
-          <div class="driver-info">
-            管理ID: ${driverId}<br>
-            ${isActive ? `最終更新: ${lastUpdated}` : '配達停止中'}
-          </div>
-        `;
-
-        // サイドバーのカードクリック時に該当ピンまでマップ移動
-        if (isActive) {
-          card.onclick = () => {
-            map.flyTo([driverData.lat, driverData.lng], 16, { animate: true });
-            markers[driverId].openPopup();
-          };
-        }
-
-        driverListEl.appendChild(card);
-      });
-
-      // 稼働台数の表示更新
-      document.getElementById('active-count').innerText = `配達中: ${activeCount} / 9 台`;
-    });
-  </script>
-</body>
-</html>
+          // マーカーアイコンデザイン
+          const bikeIcon = L.divIcon({
+            className: 'custom-div-icon',
+            html: `<div class="
