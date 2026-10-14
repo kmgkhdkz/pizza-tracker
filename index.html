@@ -68,7 +68,7 @@
       width: 100%;
     }
 
-    /* マーカーの見た目カスタム */
+    /* マーカーデザイン */
     .bike-marker {
       background-color: #dc3545;
       color: white;
@@ -95,12 +95,12 @@
 </head>
 <body>
 
-  <!-- ヘッダー＆店舗切り替えボタン -->
+  <!-- ヘッダー＆店舗切り替えボタン (矢野駅前店 / 東雲店 に統一) -->
   <header>
     <h1>🛵 配達リアルタイムモニター</h1>
     <div class="store-buttons">
       <button id="btn-store_A" class="store-btn active" onclick="switchStore('store_A')">🏢 矢野駅前店</button>
-      <button id="btn-store_B" class="store-btn" onclick="switchStore('store_B')">🏢 店舗B (東雲店)</button>
+      <button id="btn-store_B" class="store-btn" onclick="switchStore('store_B')">🏢 東雲店</button>
     </div>
   </header>
 
@@ -124,16 +124,16 @@
     };
 
     // -------------------------------------------------------------
-    // 2. 店舗定義 (店舗A: 矢野駅前店 / 店舗B: 東雲店)
+    // 2. 店舗定義 (矢野駅前店 / 東雲店)
     // -------------------------------------------------------------
     const STORES = {
       store_A: {
-        name: "店舗A (矢野駅前店)",
-        lat: 34.3528,  // ※矢野駅周辺の座標 (必要に応じて微調整してください)
+        name: "矢野駅前店",
+        lat: 34.3528,  // ※矢野駅周辺の座標
         lng: 132.5312
       },
       store_B: {
-        name: "店舗B (東雲店)",
+        name: "東雲店",
         lat: 34.379289, // 東雲店座標
         lng: 132.490263
       }
@@ -155,8 +155,8 @@
     // 4. マップ・マーカー初期化
     // -------------------------------------------------------------
     let map;
-    let driverMarkers = {}; // 各バイクのマーカーを保持
-    let storeMarkers = {};  // 各店舗のマーカーを保持
+    let driverMarkers = {};
+    let storeMarkers = {};
 
     function initMap() {
       const initialStore = STORES[currentStoreKey];
@@ -175,8 +175,8 @@
         const storeIcon = L.divIcon({
           className: 'custom-div-icon',
           html: `<div class="store-marker">🏢 ${store.name}</div>`,
-          iconSize: [120, 30],
-          iconAnchor: [60, 15]
+          iconSize: [110, 30],
+          iconAnchor: [55, 15]
         });
 
         storeMarkers[key] = L.marker([store.lat, store.lng], { icon: storeIcon }).addTo(map);
@@ -195,11 +195,11 @@
 
       currentStoreKey = storeKey;
 
-      // ボタンの見た目を更新
+      // ボタンのハイライト状態を更新
       document.querySelectorAll('.store-btn').forEach(btn => btn.classList.remove('active'));
       document.getElementById(`btn-${storeKey}`).classList.add('active');
 
-      // 指定した店舗座標を中心にしてズームレベル14へ視点移動
+      // 指定した店舗座標を中心にして視点移動
       map.setView([store.lat, store.lng], 14);
 
       console.log(`表示店舗を「${store.name}」に変更しました。`);
