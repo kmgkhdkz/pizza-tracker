@@ -16,217 +16,133 @@
   <style>
     * { box-sizing: border-box; }
     body, html {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      width: 100%;
+      margin: 0; padding: 0; height: 100%; width: 100%;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      display: flex;
-      flex-direction: column;
-      background-color: #f8f9fa;
+      display: flex; flex-direction: column; background-color: #f8f9fa;
     }
 
-    /* ヘッダー・店舗切替エリア */
+    /* ヘッダー・店舗切替・ジオフェンスボタンエリア */
     header {
-      background-color: #343a40;
-      color: #ffffff;
-      padding: 10px 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-      z-index: 1000;
+      background-color: #343a40; color: #ffffff; padding: 10px 16px;
+      display: flex; justify-content: space-between; align-items: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 1000;
     }
-    header h1 {
-      margin: 0;
-      font-size: 18px;
-    }
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
+    header h1 { margin: 0; font-size: 18px; }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    
     .active-count {
-      font-size: 14px;
-      font-weight: bold;
-      background: #495057;
-      padding: 6px 12px;
-      border-radius: 20px;
+      font-size: 13px; font-weight: bold; background: #495057; padding: 6px 12px; border-radius: 20px;
     }
-    .store-buttons {
-      display: flex;
-      gap: 8px;
-    }
+    .store-buttons { display: flex; gap: 6px; }
     .store-btn {
-      background-color: #495057;
-      color: #ffffff;
-      border: 1px solid #6c757d;
-      padding: 8px 14px;
-      font-size: 14px;
-      font-weight: bold;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.2s;
+      background-color: #495057; color: #ffffff; border: 1px solid #6c757d;
+      padding: 7px 12px; font-size: 13px; font-weight: bold; border-radius: 6px;
+      cursor: pointer; transition: all 0.2s;
     }
     .store-btn.active {
-      background-color: #0d6efd;
-      border-color: #0d6efd;
-      color: #ffffff;
+      background-color: #0d6efd; border-color: #0d6efd; color: #ffffff;
       box-shadow: 0 0 8px rgba(13, 110, 253, 0.5);
     }
 
-    /* メインレイアウト（地図 + サイドバー） */
-    .main-container {
-      display: flex;
-      flex: 1;
-      height: calc(100vh - 52px);
-      position: relative;
+    /* ジオフェンス切り替えボタン */
+    .geofence-btn {
+      background-color: #6c757d; color: #ffffff; border: 1px solid #ced4da;
+      padding: 7px 12px; font-size: 13px; font-weight: bold; border-radius: 6px;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .geofence-btn.on {
+      background-color: #198754; border-color: #198754; color: #ffffff;
+      box-shadow: 0 0 8px rgba(25, 135, 84, 0.5);
     }
 
-    /* 地図エリア */
-    #map {
-      flex: 1;
-      height: 100%;
-      width: 100%;
-    }
+    .main-container { display: flex; flex: 1; height: calc(100vh - 52px); position: relative; }
+    #map { flex: 1; height: 100%; width: 100%; }
 
-    /* サイドバー（車両一覧表示） */
     .sidebar {
-      width: 320px;
-      background: #ffffff;
-      border-left: 1px solid #dee2e6;
-      overflow-y: auto;
-      padding: 15px;
-      box-shadow: -2px 0 5px rgba(0,0,0,0.05);
+      width: 320px; background: #ffffff; border-left: 1px solid #dee2e6;
+      overflow-y: auto; padding: 15px; box-shadow: -2px 0 5px rgba(0,0,0,0.05);
     }
     .sidebar h2 {
-      font-size: 16px;
-      margin-top: 0;
-      margin-bottom: 12px;
-      padding-bottom: 8px;
-      border-bottom: 2px solid #0d6efd;
-      color: #495057;
+      font-size: 16px; margin-top: 0; margin-bottom: 12px; padding-bottom: 8px;
+      border-bottom: 2px solid #0d6efd; color: #495057;
     }
 
-    /* 車両カードデザイン */
     .driver-card {
-      background: #ffffff;
-      border: 1px solid #dee2e6;
-      border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 10px;
-      transition: all 0.2s ease;
+      background: #ffffff; border: 1px solid #dee2e6; border-radius: 8px;
+      padding: 12px; margin-bottom: 10px; transition: all 0.2s ease;
       box-shadow: 0 2px 4px rgba(0,0,0,0.03);
     }
-    .driver-card.active {
-      border-left: 5px solid #198754; /* 配達中は緑線 */
-      cursor: pointer;
-    }
+    .driver-card.active { border-left: 5px solid #198754; cursor: pointer; }
     .driver-card.active:hover {
-      background-color: #f1f8f5;
-      transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+      background-color: #f1f8f5; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.08);
     }
-    .driver-card.inactive {
-      border-left: 5px solid #6c757d; /* 待機中はグレー線 */
-      background: #f8f9fa;
-      opacity: 0.7;
+    .driver-card.near {
+      border-left: 5px solid #ffc107; background-color: #fff3cd; /* 店舗接近時は黄色警告表示 */
     }
+    .driver-card.inactive { border-left: 5px solid #6c757d; background: #f8f9fa; opacity: 0.7; }
 
-    .driver-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 6px;
-    }
-    .car-number {
-      font-size: 16px;
-      font-weight: bold;
-      color: #212529;
-    }
-    .status-badge {
-      font-size: 11px;
-      padding: 3px 8px;
-      border-radius: 12px;
-      font-weight: bold;
-    }
+    .driver-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .car-number { font-size: 16px; font-weight: bold; color: #212529; }
+    .status-badge { font-size: 11px; padding: 3px 8px; border-radius: 12px; font-weight: bold; }
     .badge-active { background: #d1e7dd; color: #0f5132; }
+    .badge-near { background: #ffe69c; color: #664d03; }
     .badge-inactive { background: #e2e3e5; color: #41464b; }
-
-    .driver-info {
-      font-size: 12px;
-      color: #6c757d;
-      line-height: 1.4;
-    }
+    .driver-info { font-size: 12px; color: #6c757d; line-height: 1.4; }
 
     /* マーカーデザイン */
     .bike-marker {
-      background-color: #dc3545;
-      color: white;
-      font-weight: bold;
-      padding: 4px 8px;
-      border-radius: 12px;
-      border: 2px solid white;
-      box-shadow: 0 3px 8px rgba(0,0,0,0.4);
-      white-space: nowrap;
-      font-size: 13px;
+      background-color: #dc3545; color: white; font-weight: bold; padding: 4px 8px;
+      border-radius: 12px; border: 2px solid white; box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+      white-space: nowrap; font-size: 13px;
     }
-    .store-marker {
-      background-color: #198754;
-      color: white;
-      font-weight: bold;
-      padding: 6px 10px;
-      border-radius: 6px;
-      border: 2px solid white;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-      white-space: nowrap;
-      font-size: 14px;
-      opacity: 0.9;
+    .bike-marker.near {
+      background-color: #ff9800; border-color: #fff3cd; animation: pulse 1.5s infinite; /* 500m以内で点滅 */
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
     }
 
-    /* レスポンシブ対応 */
+    .store-marker {
+      background-color: #198754; color: white; font-weight: bold; padding: 6px 10px;
+      border-radius: 6px; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      white-space: nowrap; font-size: 14px; opacity: 0.9;
+    }
+
     @media (max-width: 768px) {
-      .main-container {
-        flex-direction: column-reverse;
-      }
-      .sidebar {
-        width: 100%;
-        height: 220px;
-      }
+      .main-container { flex-direction: column-reverse; }
+      .sidebar { width: 100%; height: 220px; }
     }
   </style>
 </head>
 <body>
 
-  <!-- ヘッダー＆店舗切り替えボタン -->
+  <!-- ヘッダー＆店舗切り替え・ジオフェンスON/OFFボタン -->
   <header>
     <h1>🛵 配達リアルタイムモニター</h1>
     <div class="header-right">
       <span id="active-count" class="active-count">配達中: 0 / 9 台</span>
+      
+      <!-- ジオフェンス切り替えボタン -->
+      <button id="geofence-toggle-btn" class="geofence-btn on" onclick="toggleGeofence()">🔔 ジオフェンス: ON</button>
+      
       <div class="store-buttons">
         <button id="btn-store_A" class="store-btn active" onclick="switchStore('store_A')">🏢 矢野駅前店</button>
-        <button id="btn-store_B" class="store-btn" onclick="switchStore('store_B')">🏢 東雲店</button>
+        <button id="btn-store_B" class="store-btn" onclick="switchStore('store_B')">🏢 広島東雲店</button>
       </div>
     </div>
   </header>
 
   <div class="main-container">
-    <!-- 地図コンテナ -->
     <div id="map"></div>
-
-    <!-- サイドバー（車両状態一覧表示） -->
     <div class="sidebar">
       <h2>車両状態一覧</h2>
-      <div id="driver-list">
-        <!-- JSで全9台のカードを動的に生成 -->
-      </div>
+      <div id="driver-list"></div>
     </div>
   </div>
 
   <script>
-    // -------------------------------------------------------------
-    // 1. 車両定義 (全9台の対応表)
-    // -------------------------------------------------------------
     const VEHICLES = {
       driver_01: "86716",
       driver_02: "86717",
@@ -239,27 +155,14 @@
       driver_09: "13809"
     };
 
-    // -------------------------------------------------------------
-    // 2. 店舗定義 (矢野駅前店 / 東雲店)
-    // -------------------------------------------------------------
     const STORES = {
-      store_A: {
-        name: "矢野駅前店",
-        lat: 34.351867,
-        lng: 132.532665
-      },
-      store_B: {
-        name: "東雲店",
-        lat: 34.379289,
-        lng: 132.490263
-      }
+      store_A: { name: "矢野駅前店", lat: 34.351867, lng: 132.532665 },
+      store_B: { name: "広島東雲店", lat: 34.379289, lng: 132.490263 }
     };
 
     let currentStoreKey = 'store_A';
+    let isGeofenceEnabled = true; // ジオフェンス機能のON/OFF初期値
 
-    // -------------------------------------------------------------
-    // 3. Firebase 設定
-    // -------------------------------------------------------------
     const firebaseConfig = {
       databaseURL: "https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app"
     };
@@ -267,147 +170,190 @@
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
 
-    // -------------------------------------------------------------
-    // 4. マップ・マーカー初期化
-    // -------------------------------------------------------------
     let map;
     let driverMarkers = {};
     let storeMarkers = {};
+    let geofenceCircles = {};
 
     function initMap() {
       const initialStore = STORES[currentStoreKey];
-
       map = L.map('map').setView([initialStore.lat, initialStore.lng], 14);
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
       }).addTo(map);
 
-      // 店舗ピン（重なり順を下へ zIndexOffset: -1000）
+      // 店舗ピンとジオフェンス円（半径500m）をマップ上に作成
       Object.keys(STORES).forEach(key => {
         const store = STORES[key];
         const storeIcon = L.divIcon({
           className: 'custom-div-icon',
           html: `<div class="store-marker">🏢 ${store.name}</div>`,
-          iconSize: [120, 30],
-          iconAnchor: [60, 15]
+          iconSize: [120, 30], iconAnchor: [60, 15]
         });
 
         storeMarkers[key] = L.marker([store.lat, store.lng], { 
-          icon: storeIcon,
-          zIndexOffset: -1000
+          icon: storeIcon, zIndexOffset: -1000 
+        }).addTo(map);
+
+        // 半径500mの円（ジオフェンス可視化）
+        geofenceCircles[key] = L.circle([store.lat, store.lng], {
+          radius: 500,
+          color: '#198754',
+          fillColor: '#198754',
+          fillOpacity: 0.1,
+          weight: 1.5
         }).addTo(map);
       });
 
       listenToFirebase();
     }
 
-    // -------------------------------------------------------------
-    // 5. 店舗切り替え処理
-    // -------------------------------------------------------------
+    // ジオフェンスON/OFF切り替え関数
+    function toggleGeofence() {
+      isGeofenceEnabled = !isGeofenceEnabled;
+      const btn = document.getElementById('geofence-toggle-btn');
+
+      if (isGeofenceEnabled) {
+        btn.className = "geofence-btn on";
+        btn.innerText = "🔔 ジオフェンス: ON";
+        Object.keys(geofenceCircles).forEach(key => map.addLayer(geofenceCircles[key]));
+      } else {
+        btn.className = "geofence-btn";
+        btn.innerText = "🔕 ジオフェンス: OFF";
+        Object.keys(geofenceCircles).forEach(key => map.removeLayer(geofenceCircles[key]));
+      }
+
+      // マーカー・表示の再描写
+      listenToFirebaseOnce();
+    }
+
+    // 店舗切り替え
     function switchStore(storeKey) {
       const store = STORES[storeKey];
       if (!store) return;
 
       currentStoreKey = storeKey;
-
       document.querySelectorAll('.store-btn').forEach(btn => btn.classList.remove('active'));
       document.getElementById(`btn-${storeKey}`).classList.add('active');
 
       map.setView([store.lat, store.lng], 14);
+      listenToFirebaseOnce();
     }
 
-    // -------------------------------------------------------------
-    // 6. Firebase リアルタイム同期 & サイドバー生成処理
-    // -------------------------------------------------------------
+    // 2点間の距離計算関数 (メートル単位: ハバーサイン公式)
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371e3;
+      const φ1 = lat1 * Math.PI / 180;
+      const φ2 = lat2 * Math.PI / 180;
+      const Δφ = (lat2 - lat1) * Math.PI / 180;
+      const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+      const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+      return R * c; // 距離(m)
+    }
+
+    function listenToFirebaseOnce() {
+      database.ref('drivers').once('value', (snapshot) => {
+        renderDrivers(snapshot.val() || {});
+      });
+    }
+
     function listenToFirebase() {
       database.ref('drivers').on('value', (snapshot) => {
-        const data = snapshot.val() || {};
-        let activeCount = 0;
-
-        const driverListEl = document.getElementById('driver-list');
-        driverListEl.innerHTML = ''; // サイドバー一覧をリセット
-
-        // 配達中と待機中で分けるための配列
-        const activeCards = [];
-        const inactiveCards = [];
-
-        Object.keys(VEHICLES).forEach((driverId) => {
-          const carNumber = VEHICLES[driverId];
-          const driverData = data[driverId];
-
-          const isActive = driverData && driverData.status === 'active' && driverData.lat && driverData.lng;
-          if (isActive) activeCount++;
-
-          // --- 1. 地図上のマーカー制御 ---
-          if (isActive) {
-            const bikeIcon = L.divIcon({
-              className: 'custom-div-icon',
-              html: `<div class="bike-marker">🛵 ${carNumber}</div>`,
-              iconSize: [80, 26],
-              iconAnchor: [40, 13]
-            });
-
-            if (driverMarkers[driverId]) {
-              driverMarkers[driverId].setLatLng([driverData.lat, driverData.lng]);
-            } else {
-              driverMarkers[driverId] = L.marker([driverData.lat, driverData.lng], { 
-                icon: bikeIcon,
-                zIndexOffset: 1000 // バイクピンを最前面に描画
-              })
-              .addTo(map)
-              .bindPopup(`<b>車番: ${carNumber}</b><br>管理ID: ${driverId}`);
-            }
-          } else {
-            // 待機中は地図上からピンを除去
-            if (driverMarkers[driverId]) {
-              map.removeLayer(driverMarkers[driverId]);
-              delete driverMarkers[driverId];
-            }
-          }
-
-          // --- 2. サイドバーカードの生成 ---
-          const card = document.createElement('div');
-          card.className = `driver-card ${isActive ? 'active' : 'inactive'}`;
-
-          const lastUpdated = driverData && driverData.updatedAt
-            ? new Date(driverData.updatedAt).toLocaleTimeString('ja-JP')
-            : '未受信';
-
-          card.innerHTML = `
-            <div class="driver-header">
-              <span class="car-number">🛵 車番: ${carNumber}</span>
-              <span class="status-badge ${isActive ? 'badge-active' : 'badge-inactive'}">
-                ${isActive ? '配達中' : '待機中'}
-              </span>
-            </div>
-            <div class="driver-info">
-              管理ID: ${driverId}<br>
-              ${isActive ? `最終更新: ${lastUpdated} (タップで追跡)` : '待機中 (位置送信停止)'}
-            </div>
-          `;
-
-          // 配達中カードのクリック時イベント（マップがスムーズに移動＆ポップアップ表示）
-          if (isActive) {
-            card.onclick = () => {
-              map.flyTo([driverData.lat, driverData.lng], 16, { animate: true });
-              if (driverMarkers[driverId]) {
-                driverMarkers[driverId].openPopup();
-              }
-            };
-            activeCards.push(card);
-          } else {
-            inactiveCards.push(card);
-          }
-        });
-
-        // 配達中カード（緑）を上、待機中カード（グレー）を下にして追加
-        activeCards.forEach(c => driverListEl.appendChild(c));
-        inactiveCards.forEach(c => driverListEl.appendChild(c));
-
-        // 稼働台数の表示更新
-        document.getElementById('active-count').innerText = `配達中: ${activeCount} / 9 台`;
+        renderDrivers(snapshot.val() || {});
       });
+    }
+
+    function renderDrivers(data) {
+      let activeCount = 0;
+      const driverListEl = document.getElementById('driver-list');
+      driverListEl.innerHTML = '';
+
+      const currentStore = STORES[currentStoreKey];
+      const activeCards = [];
+      const inactiveCards = [];
+
+      Object.keys(VEHICLES).forEach((driverId) => {
+        const carNumber = VEHICLES[driverId];
+        const driverData = data[driverId];
+
+        const isActive = driverData && driverData.status === 'active' && driverData.lat && driverData.lng;
+        if (isActive) activeCount++;
+
+        let isNearStore = false;
+        if (isActive && isGeofenceEnabled) {
+          const distance = calculateDistance(driverData.lat, driverData.lng, currentStore.lat, currentStore.lng);
+          if (distance <= 500) {
+            isNearStore = true; // 500m以内に入った判定
+          }
+        }
+
+        if (isActive) {
+          const markerClass = isNearStore ? 'bike-marker near' : 'bike-marker';
+          const bikeIcon = L.divIcon({
+            className: 'custom-div-icon',
+            html: `<div class="${markerClass}">🛵 ${carNumber}</div>`,
+            iconSize: [80, 26], iconAnchor: [40, 13]
+          });
+
+          if (driverMarkers[driverId]) {
+            driverMarkers[driverId].setLatLng([driverData.lat, driverData.lng]);
+            driverMarkers[driverId].setIcon(bikeIcon);
+          } else {
+            driverMarkers[driverId] = L.marker([driverData.lat, driverData.lng], { 
+              icon: bikeIcon, zIndexOffset: 1000 
+            })
+            .addTo(map)
+            .bindPopup(`<b>車番: ${carNumber}</b><br>管理ID: ${driverId}`);
+          }
+        } else {
+          if (driverMarkers[driverId]) {
+            map.removeLayer(driverMarkers[driverId]);
+            delete driverMarkers[driverId];
+          }
+        }
+
+        const card = document.createElement('div');
+        card.className = `driver-card ${isActive ? (isNearStore ? 'active near' : 'active') : 'inactive'}`;
+
+        const lastUpdated = driverData && driverData.updatedAt
+          ? new Date(driverData.updatedAt).toLocaleTimeString('ja-JP')
+          : '未受信';
+
+        const badgeText = isActive ? (isNearStore ? '帰店直前 (500m以内)' : '配達中') : '待機中';
+        const badgeClass = isActive ? (isNearStore ? 'badge-near' : 'badge-active') : 'badge-inactive';
+
+        card.innerHTML = `
+          <div class="driver-header">
+            <span class="car-number">🛵 車番: ${carNumber}</span>
+            <span class="status-badge ${badgeClass}">${badgeText}</span>
+          </div>
+          <div class="driver-info">
+            管理ID: ${driverId}<br>
+            ${isActive ? `最終更新: ${lastUpdated} (タップで追跡)` : '待機中 (位置送信停止)'}
+          </div>
+        `;
+
+        if (isActive) {
+          card.onclick = () => {
+            map.flyTo([driverData.lat, driverData.lng], 16, { animate: true });
+            if (driverMarkers[driverId]) { driverMarkers[driverId].openPopup(); }
+          };
+          activeCards.push(card);
+        } else {
+          inactiveCards.push(card);
+        }
+      });
+
+      activeCards.forEach(c => driverListEl.appendChild(c));
+      inactiveCards.forEach(c => driverListEl.appendChild(c));
+
+      document.getElementById('active-count').innerText = `配達中: ${activeCount} / 9 台`;
     }
 
     window.onload = initMap;
