@@ -77,9 +77,10 @@
       background-color: #f1f8f5; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.08);
     }
     .driver-card.near {
-      border-left: 5px solid #ffc107; background-color: #fff3cd; /* 店舗接近時は黄色警告表示 */
+      border-left: 5px solid #ffc107; background-color: #fff3cd;
     }
-    .driver-card.inactive { border-left: 5px solid #6c757d; background: #f8f9fa; opacity: 0.7; }
+    .driver-card.inactive { border-left: 5px solid #6c757d; background: #f8f9fa; opacity: 0.8; }
+    .driver-card.timeout { border-left: 5px solid #dc3545; background: #fff5f5; opacity: 0.9; }
 
     .driver-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
     .car-number { font-size: 16px; font-weight: bold; color: #212529; }
@@ -87,6 +88,7 @@
     .badge-active { background: #d1e7dd; color: #0f5132; }
     .badge-near { background: #ffe69c; color: #664d03; }
     .badge-inactive { background: #e2e3e5; color: #41464b; }
+    .badge-timeout { background: #f8d7da; color: #842029; }
     .driver-info { font-size: 12px; color: #6c757d; line-height: 1.4; }
 
     /* マーカーデザイン */
@@ -96,7 +98,7 @@
       white-space: nowrap; font-size: 13px;
     }
     .bike-marker.near {
-      background-color: #ff9800; border-color: #fff3cd; animation: pulse 1.5s infinite; /* 500m以内で点滅 */
+      background-color: #ff9800; border-color: #fff3cd; animation: pulse 1.5s infinite;
     }
     @keyframes pulse {
       0% { transform: scale(1); }
@@ -161,7 +163,7 @@
     };
 
     let currentStoreKey = 'store_A';
-    let isGeofenceEnabled = true; // ジオフェンス機能のON/OFF初期値
+    let isGeofenceEnabled = true;
 
     const firebaseConfig = {
       databaseURL: "https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app"
@@ -174,6 +176,7 @@
     let driverMarkers = {};
     let storeMarkers = {};
     let geofenceCircles = {};
+    let cachedDriversData = {}; // 保持用キャッシュ
 
     function initMap() {
       const initialStore = STORES[currentStoreKey];
@@ -196,7 +199,6 @@
           icon: storeIcon, zIndexOffset: -1000 
         }).addTo(map);
 
-        // 半径500mの円（ジオフェンス可視化）
         geofenceCircles[key] = L.circle([store.lat, store.lng], {
           radius: 500,
           color: '#198754',
@@ -207,6 +209,11 @@
       });
 
       listenToFirebase();
+
+      // 5秒ごとに最新状態を再チェック（30秒タイムアウト監視）
+      setInterval(() => {
+        renderDrivers(cachedDriversData);
+      }, 5000);
     }
 
     // ジオフェンスON/OFF切り替え関数
@@ -224,8 +231,7 @@
         Object.keys(geofenceCircles).forEach(key => map.removeLayer(geofenceCircles[key]));
       }
 
-      // マーカー・表示の再描写
-      listenToFirebaseOnce();
+      renderDrivers(cachedDriversData);
     }
 
     // 店舗切り替え
@@ -238,7 +244,7 @@
       document.getElementById(`btn-${storeKey}`).classList.add('active');
 
       map.setView([store.lat, store.lng], 14);
-      listenToFirebaseOnce();
+      renderDrivers(cachedDriversData);
     }
 
     // 2点間の距離計算関数 (メートル単位: ハバーサイン公式)
@@ -254,18 +260,13 @@
                 Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
       const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-      return R * c; // 距離(m)
-    }
-
-    function listenToFirebaseOnce() {
-      database.ref('drivers').once('value', (snapshot) => {
-        renderDrivers(snapshot.val() || {});
-      });
+      return R * c;
     }
 
     function listenToFirebase() {
       database.ref('drivers').on('value', (snapshot) => {
-        renderDrivers(snapshot.val() || {});
+        cachedDriversData = snapshot.val() || {};
+        renderDrivers(cachedDriversData);
       });
     }
 
@@ -275,6 +276,7 @@
       driverListEl.innerHTML = '';
 
       const currentStore = STORES[currentStoreKey];
+      const now = Date.now();
       const activeCards = [];
       const inactiveCards = [];
 
@@ -282,17 +284,23 @@
         const carNumber = VEHICLES[driverId];
         const driverData = data[driverId];
 
-        const isActive = driverData && driverData.status === 'active' && driverData.lat && driverData.lng;
+        const timeDiff = (driverData && driverData.updatedAt) ? (now - driverData.updatedAt) : Infinity;
+        const isTimeout = timeDiff > 30000;
+
+        const isSending = driverData && driverData.status === 'active' && driverData.lat && driverData.lng;
+        const isActive = isSending && !isTimeout;
+
         if (isActive) activeCount++;
 
         let isNearStore = false;
         if (isActive && isGeofenceEnabled) {
           const distance = calculateDistance(driverData.lat, driverData.lng, currentStore.lat, currentStore.lng);
           if (distance <= 500) {
-            isNearStore = true; // 500m以内に入った判定
+            isNearStore = true;
           }
         }
 
+        // --- 地図マーカーの制御 ---
         if (isActive) {
           const markerClass = isNearStore ? 'bike-marker near' : 'bike-marker';
           const bikeIcon = L.divIcon({
@@ -318,15 +326,27 @@
           }
         }
 
+        // --- サイドバーカードの生成 ---
         const card = document.createElement('div');
-        card.className = `driver-card ${isActive ? (isNearStore ? 'active near' : 'active') : 'inactive'}`;
+        
+        let cardClass = 'driver-card inactive';
+        let badgeText = '待機中';
+        let badgeClass = 'badge-inactive';
+        let statusDesc = '待機中 (位置送信停止)';
 
-        const lastUpdated = driverData && driverData.updatedAt
-          ? new Date(driverData.updatedAt).toLocaleTimeString('ja-JP')
-          : '未受信';
+        if (isActive) {
+          cardClass = isNearStore ? 'driver-card active near' : 'driver-card active';
+          badgeText = isNearStore ? '帰店直前 (500m以内)' : '配達中';
+          badgeClass = isNearStore ? 'badge-near' : 'badge-active';
+          statusDesc = `最終更新: ${new Date(driverData.updatedAt).toLocaleTimeString('ja-JP')} (タップで追跡)`;
+        } else if (isSending && isTimeout) {
+          cardClass = 'driver-card timeout';
+          badgeText = '待機中（通信が切れました）';
+          badgeClass = 'badge-timeout';
+          statusDesc = `最終更新: ${new Date(driverData.updatedAt).toLocaleTimeString('ja-JP')} (30秒以上更新停止)`;
+        }
 
-        const badgeText = isActive ? (isNearStore ? '帰店直前 (500m以内)' : '配達中') : '待機中';
-        const badgeClass = isActive ? (isNearStore ? 'badge-near' : 'badge-active') : 'badge-inactive';
+        card.className = cardClass;
 
         card.innerHTML = `
           <div class="driver-header">
@@ -335,7 +355,7 @@
           </div>
           <div class="driver-info">
             管理ID: ${driverId}<br>
-            ${isActive ? `最終更新: ${lastUpdated} (タップで追跡)` : '待機中 (位置送信停止)'}
+            ${statusDesc}
           </div>
         `;
 
