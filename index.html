@@ -59,9 +59,21 @@
     #map { flex: 1; height: 100%; width: 100%; }
 
     .sidebar {
-      width: 320px; background: #ffffff; border-left: 1px solid #dee2e6;
+      width: 320px; flex: 0 0 320px; background: #ffffff; border-left: 1px solid #dee2e6;
       overflow-y: auto; padding: 15px; box-shadow: -2px 0 5px rgba(0,0,0,0.05);
+      transition: width 0.2s ease, flex-basis 0.2s ease, padding 0.2s ease;
     }
+    .sidebar.hidden {
+      width: 0; flex-basis: 0; padding-left: 0; padding-right: 0;
+      border-left: 0; overflow: hidden;
+    }
+    #sidebar-toggle-btn {
+      position: absolute; z-index: 1100; top: 12px; right: 332px;
+      background: #ffffff; color: #212529; border: 1px solid #adb5bd;
+      border-radius: 6px; padding: 8px 10px; font-size: 13px; font-weight: bold;
+      cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+    }
+    #sidebar-toggle-btn.sidebar-hidden { right: 12px; }
     .sidebar h2 {
       font-size: 16px; margin-top: 0; margin-bottom: 12px; padding-bottom: 8px;
       border-bottom: 2px solid #0d6efd; color: #495057;
@@ -112,7 +124,9 @@
 
     @media (max-width: 768px) {
       .main-container { flex-direction: column-reverse; }
-      .sidebar { width: 100%; height: 220px; }
+      .sidebar { width: 100%; flex: 0 0 220px; height: 220px; border-left: 0; border-top: 1px solid #dee2e6; }
+      .sidebar.hidden { width: 100%; flex-basis: 0; height: 0; padding-top: 0; padding-bottom: 0; border-top: 0; }
+      #sidebar-toggle-btn, #sidebar-toggle-btn.sidebar-hidden { top: 10px; right: 10px; }
     }
   </style>
 </head>
@@ -136,7 +150,8 @@
 
   <div class="main-container">
     <div id="map"></div>
-    <div class="sidebar">
+    <button id="sidebar-toggle-btn" type="button" onclick="toggleSidebar()">車両一覧を隠す ◀</button>
+    <div id="vehicle-sidebar" class="sidebar">
       <h2>車両状態一覧</h2>
       <div id="driver-list"></div>
     </div>
@@ -162,6 +177,56 @@
 
     let currentStoreKey = 'store_A';
     let isGeofenceEnabled = true; // ジオフェンス機能のON/OFF初期値
+    let isSidebarHidden = false;
+    const STALE_AFTER_MS = 30 * 1000; // 最終更新から30秒で通信途切れ扱い
+    let hasInitialDriverSnapshot = false;
+    let previouslyNearVehicles = new Set();
+    let audioContext = null;
+
+    // 車両一覧の表示・非表示。地図サイズを切り替え後に再調整します。
+    function toggleSidebar() {
+      const sidebar = document.getElementById('vehicle-sidebar');
+      const button = document.getElementById('sidebar-toggle-btn');
+      isSidebarHidden = !isSidebarHidden;
+      sidebar.classList.toggle('hidden', isSidebarHidden);
+      button.classList.toggle('sidebar-hidden', isSidebarHidden);
+      button.textContent = isSidebarHidden ? '▶ 車両一覧を表示' : '車両一覧を隠す ◀';
+      setTimeout(() => { if (map) map.invalidateSize(); }, 250);
+    }
+
+    // ブラウザの音声機能を初期化（ユーザー操作後にアラームを鳴らせます）。
+    function prepareAudio() {
+      try {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass && !audioContext) audioContext = new AudioContextClass();
+        if (audioContext && audioContext.state === 'suspended') audioContext.resume();
+      } catch (error) {
+        console.warn('音声アラームを初期化できません:', error);
+      }
+    }
+
+    function playGeofenceAlarm() {
+      try {
+        prepareAudio();
+        if (!audioContext || audioContext.state !== 'running') return;
+        const now = audioContext.currentTime;
+        [0, 0.22, 0.44].forEach((offset) => {
+          const oscillator = audioContext.createOscillator();
+          const gain = audioContext.createGain();
+          oscillator.type = 'sine';
+          oscillator.frequency.value = 880;
+          gain.gain.setValueAtTime(0.0001, now + offset);
+          gain.gain.exponentialRampToValueAtTime(0.22, now + offset + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.16);
+          oscillator.connect(gain);
+          gain.connect(audioContext.destination);
+          oscillator.start(now + offset);
+          oscillator.stop(now + offset + 0.17);
+        });
+      } catch (error) {
+        console.warn('ジオフェンス音声アラームを再生できません:', error);
+      }
+    }
 
     const firebaseConfig = {
       databaseURL: "https://pizza-tracker-42bd1-default-rtdb.asia-southeast1.firebasedatabase.app"
@@ -211,6 +276,7 @@
 
     // ジオフェンスON/OFF切り替え関数
     function toggleGeofence() {
+      prepareAudio();
       isGeofenceEnabled = !isGeofenceEnabled;
       const btn = document.getElementById('geofence-toggle-btn');
 
@@ -267,9 +333,14 @@
       database.ref('drivers').on('value', (snapshot) => {
         renderDrivers(snapshot.val() || {});
       });
+      // Firebaseから新しいデータが来ない場合も、30秒判定を確実に反映する。
+      setInterval(() => {
+        if (window.latestDriverData) renderDrivers(window.latestDriverData);
+      }, 1000);
     }
 
     function renderDrivers(data) {
+      window.latestDriverData = data;
       let activeCount = 0;
       const driverListEl = document.getElementById('driver-list');
       driverListEl.innerHTML = '';
@@ -282,15 +353,30 @@
         const carNumber = VEHICLES[driverId];
         const driverData = data[driverId];
 
-        const isActive = driverData && driverData.status === 'active' && driverData.lat && driverData.lng;
+        const hasCoordinates = !!(driverData && Number.isFinite(Number(driverData.lat)) && Number.isFinite(Number(driverData.lng)));
+        const lastUpdatedMs = driverData && Number.isFinite(Number(driverData.updatedAt))
+          ? Number(driverData.updatedAt)
+          : 0;
+        const isStale = !!(driverData && driverData.status === 'active' &&
+          (!lastUpdatedMs || Date.now() - lastUpdatedMs >= STALE_AFTER_MS));
+        const isActive = !!(driverData && driverData.status === 'active' && hasCoordinates && !isStale);
         if (isActive) activeCount++;
 
         let isNearStore = false;
         if (isActive && isGeofenceEnabled) {
-          const distance = calculateDistance(driverData.lat, driverData.lng, currentStore.lat, currentStore.lng);
+          const distance = calculateDistance(Number(driverData.lat), Number(driverData.lng), currentStore.lat, currentStore.lng);
           if (distance <= 500) {
-            isNearStore = true; // 500m以内に入った判定
+            isNearStore = true; // 選択中の店舗から500m以内
           }
+        }
+
+        // 車両が初めて500m圏内に入った瞬間だけアラームを鳴らす。
+        const nearKey = `${currentStoreKey}:${driverId}`;
+        if (isNearStore) {
+          if (hasInitialDriverSnapshot && !previouslyNearVehicles.has(nearKey)) playGeofenceAlarm();
+          previouslyNearVehicles.add(nearKey);
+        } else {
+          previouslyNearVehicles.delete(nearKey);
         }
 
         if (isActive) {
@@ -327,6 +413,9 @@
 
         const badgeText = isActive ? (isNearStore ? '帰店直前 (500m以内)' : '配達中') : '待機中';
         const badgeClass = isActive ? (isNearStore ? 'badge-near' : 'badge-active') : 'badge-inactive';
+        const inactiveMessage = isStale
+          ? '待機中（通信が途切れました）'
+          : '待機中 (位置送信停止)';
 
         card.innerHTML = `
           <div class="driver-header">
@@ -335,7 +424,7 @@
           </div>
           <div class="driver-info">
             管理ID: ${driverId}<br>
-            ${isActive ? `最終更新: ${lastUpdated} (タップで追跡)` : '待機中 (位置送信停止)'}
+            ${isActive ? `最終更新: ${lastUpdated} (タップで追跡)` : inactiveMessage}
           </div>
         `;
 
@@ -354,6 +443,7 @@
       inactiveCards.forEach(c => driverListEl.appendChild(c));
 
       document.getElementById('active-count').innerText = `配達中: ${activeCount} / 9 台`;
+      hasInitialDriverSnapshot = true;
     }
 
     window.onload = initMap;
